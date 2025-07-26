@@ -113,7 +113,7 @@ GUIDELINES:
     // --- Step 4: Executing Deep Research ---
     await updateJob(jobId, { status: "researching" })
     console.log(`[${job.id}] [O4 Mini] Sending research plan to deep research model:`)
-    console.log(job.deepResearchPrompt)
+    console.log(job.deepResearchPrompt,"job.deepResearchPrompt================")
 
     // Simulating the async call with a webhook.
     const deepResearchResponse = await openai.chat.completions.create({
