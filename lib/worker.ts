@@ -41,7 +41,7 @@ async function parseDocument(filePath: string, mimeType: string): Promise<string
       const outputDir = path.dirname(filePath)
       const outputPdfPath = path.join(outputDir, `${path.basename(filePath)}.pdf`)
       const command = `unoconv -f pdf -o "${outputPdfPath}" "${filePath}"`
-      // console.log(`[${path.basename(filePath)}] Executing unoconv: ${command}`)
+      console.log(`[${path.basename(filePath)}] Executing unoconv: ${command}`)
 
       exec(command, async (error, stdout, stderr) => {
         if (error) {
@@ -49,7 +49,7 @@ async function parseDocument(filePath: string, mimeType: string): Promise<string
           return reject(new Error("Failed to convert PPTX to PDF. Ensure 'unoconv' and LibreOffice are installed."))
         }
         try {
-          // console.log(`[${path.basename(filePath)}] Converted PPTX to PDF, now parsing.`)
+          console.log(`[${path.basename(filePath)}] Converted PPTX to PDF, now parsing.`)
           const pdfText = await parseDocument(outputPdfPath, "application/pdf")
           await fs.unlink(outputPdfPath) // Clean up intermediate PDF
           resolve(pdfText)
@@ -73,7 +73,7 @@ export async function runAnalysis(jobId: string) {
   try {
     await updateJob(jobId, { status: "parsing" })
     const rawText = await parseDocument(job.filePath, job.mimeType)
-    // console.log(`[${job.id}] Document parsed successfully. Text length: ${rawText.length}`)
+    console.log(`[${job.id}] Document parsed successfully. Text length: ${rawText.length}`)
 
     // --- Step 3: Intelligent Prompt Generation ---
     await updateJob(jobId, { status: "prompting" })
@@ -89,9 +89,9 @@ GUIDELINES:
 4.  **Emphasize Source Quality:** "Prioritize primary sources: official company press releases, regulatory filings, academic journals, and reports from reputable market research firms. Avoid unverified blogs or press release aggregators. All claims must be supported by inline citations."
 5.  **Final Output:** Return ONLY the generated prompt for the research AI. Do not conduct the research yourself.`
 
-    // console.log(`[${job.id}] [GPT-4.1] Sending prompt for research plan generation:`)
-    // console.log(promptGenerationInstructions)
-    // console.log('User content:', `Generate a research prompt based on this text:\n\n---\n\n${rawText.substring(0, 12000)}`)
+    console.log(`[${job.id}] [GPT-4.1] Sending prompt for research plan generation:`)
+    console.log(promptGenerationInstructions , "promptGenerationInstructions")
+    console.log('User content:', `Generate a research prompt based on this text:\n\n---\n\n${rawText.substring(0, 12000)}`)
 
     const promptResponse = await openai.chat.completions.create({
       // CORRECTED: Model name now matches the specification exactly.
@@ -106,14 +106,14 @@ GUIDELINES:
     })
     const deepResearchPrompt = promptResponse.choices[0].message.content ?? ""
     await updateJob(jobId, { deepResearchPrompt })
-    // console.log(`[${job.id}] [GPT-4.1] Response for research plan:`)
-    // console.log(promptResponse.choices[0].message.content)
-    // console.log(`[${job.id}] Deep research prompt generated.`)
+    console.log(`[${job.id}] [GPT-4.1] Response for research plan:`)
+    console.log(promptResponse.choices[0].message.content)
+    console.log(`[${job.id}] Deep research prompt generated.`)
 
     // --- Step 4: Executing Deep Research ---
     await updateJob(jobId, { status: "researching" })
-    // console.log(`[${job.id}] [O4 Mini] Sending research plan to deep research model:`)
-    // console.log(job.deepResearchPrompt)
+    console.log(`[${job.id}] [O4 Mini] Sending research plan to deep research model:`)
+    console.log(job.deepResearchPrompt)
 
     // Simulating the async call with a webhook.
     const deepResearchResponse = await openai.chat.completions.create({
