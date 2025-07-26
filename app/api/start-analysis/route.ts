@@ -45,7 +45,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "CAPTCHA verification failed." }, { status: 403 })
     }
 
-    const uploadsDir = path.join(process.cwd(), "uploads")
+    // Use OS temp directory for file storage (works in both local and production)
+    const os = await import('os')
+    const tempDir = os.tmpdir()
+    const uploadsDir = path.join(tempDir, "insight-engine-uploads")
     await fs.mkdir(uploadsDir, { recursive: true })
 
     const fileBuffer = Buffer.from(await file.arrayBuffer())
