@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import OpenAI from "openai"
 import { getJob, updateJob } from "@/lib/jobs"
-import { cleanupFile } from "@/lib/worker"
+import { cleanupFile, cleanupUploadsDirectory } from "@/lib/worker"
 import { sendCompletionEmail, sendErrorEmail } from "@/lib/email"
 
 const openai = new OpenAI({
@@ -105,6 +105,9 @@ GUIDELINES:
 
     // await sendCompletionEmail(job.email, jobId)
     await cleanupFile(job.filePath)
+    
+    // Also clean up any old files in the uploads directory
+    await cleanupUploadsDirectory()
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

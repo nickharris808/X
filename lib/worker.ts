@@ -175,9 +175,71 @@ function extractSources(text: string): { title: string; url: string }[] {
 
 export async function cleanupFile(filePath: string) {
   try {
+    // Check if file exists before trying to delete
+    await fs.access(filePath)
     await fs.unlink(filePath)
     console.log(`[${path.basename(filePath)}] Cleaned up temporary file.`)
+  } catch (error: any) {
+    if (error.code === 'ENOENT') {
+      console.log(`[${path.basename(filePath)}] File already deleted or doesn't exist.`)
+    } else {
+      console.error(`Failed to clean up file ${filePath}:`, error)
+    }
+  }
+}
+
+export async function cleanupUploadsDirectory() {
+  try {
+    const os = await import('os')
+    const tempDir = os.tmpdir()
+    const uploadsDir = path.join(tempDir, "insight-engine-uploads")
+    
+    // Check if directory exists
+    try {
+      await fs.access(uploadsDir)
+    } catch (error) {
+      console.log("Uploads directory doesn't exist, nothing to clean.")
+      return
+    }
+
+    // Read all files in the directory
+    const files = await fs.readdir(uploadsDir)
+    
+    if (files.length === 0) {
+      // Remove empty directory
+      await fs.rmdir(uploadsDir)
+      console.log("Removed empty uploads directory.")
+      return
+    }
+
+    // Clean up files older than 24 hours
+    const now = Date.now()
+    const oneDayMs = 24 * 60 * 60 * 1000
+    
+    for (const file of files) {
+      const filePath = path.join(uploadsDir, file)
+      try {
+        const stats = await fs.stat(filePath)
+        const fileAge = now - stats.mtime.getTime()
+        
+        if (fileAge > oneDayMs) {
+          await fs.unlink(filePath)
+          console.log(`[${file}] Cleaned up old file (${Math.round(fileAge / (60 * 60 * 1000))} hours old).`)
+        }
+      } catch (error: any) {
+        if (error.code !== 'ENOENT') {
+          console.error(`Failed to process file ${file}:`, error)
+        }
+      }
+    }
+
+    // Check if directory is now empty and remove it
+    const remainingFiles = await fs.readdir(uploadsDir)
+    if (remainingFiles.length === 0) {
+      await fs.rmdir(uploadsDir)
+      console.log("Removed empty uploads directory after cleanup.")
+    }
   } catch (error) {
-    console.error(`Failed to clean up file ${filePath}:`, error)
+    console.error("Failed to clean up uploads directory:", error)
   }
 }
