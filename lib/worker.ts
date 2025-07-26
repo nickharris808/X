@@ -1,7 +1,6 @@
 import fs from "fs/promises"
 import path from "path"
 import { exec } from "child_process"
-import pdf from "pdf-parse"
 import mammoth from "mammoth"
 import OpenAI from "openai"
 import { getJob, updateJob } from "./jobs"
@@ -19,6 +18,7 @@ async function parseDocument(filePath: string, mimeType: string): Promise<string
   if (mimeType === "application/pdf") {
     try {
       const dataBuffer = await fs.readFile(filePath)
+      const pdf = (await import("pdf-parse")).default
       const data = await pdf(dataBuffer)
       if (!data.text || data.text.trim().length === 0) {
         throw new Error("PDF contains no extractable text. It might be an image-only PDF.")
