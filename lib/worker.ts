@@ -111,7 +111,7 @@ GUIDELINES:
     // console.log(`[${job.id}] Deep research prompt generated.`)
 
     // --- Step 4: Executing Deep Research ---
-    // await updateJob(jobId, { status: "researching" })
+    await updateJob(jobId, { status: "researching" })
     // console.log(`[${job.id}] [O4 Mini] Sending research plan to deep research model:`)
     // console.log(job.deepResearchPrompt)
 
@@ -129,10 +129,7 @@ GUIDELINES:
       // tools: [{ type: "web_search" }], // Removed to fix linter error
     })
     const researchResult = deepResearchResponse.choices[0].message.content
-    console.log("===================================")
-    console.log(`[${job.id}] [O4 Mini] Deep research response:`)
-    console.log("===================================")
-    console.log(researchResult)
+   
 
     // Simulate the webhook call
     const baseUrl = process.env.BASE_URL || "http://localhost:3000";
