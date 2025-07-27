@@ -22,7 +22,19 @@ export async function POST(req: NextRequest) {
     const email = formData.get("email") as string | null
     const marketingOptIn = formData.get("marketingOptIn") === "true"
     const captchaToken = formData.get("captchaToken") as string | null
-  
+    const text = formData.get("text") as string | null
+    
+    console.log('Received form data:', {
+      hasFile: !!file,
+      email: email,
+      hasCaptchaToken: !!captchaToken,
+      hasText: !!text,
+      textLength: text?.length
+    })
+    
+    if(!text){
+      return NextResponse.json({ error: "Text is required." }, { status: 400 })
+    }
     if (!file) {
       return NextResponse.json({ error: "File is required." }, { status: 400 })
     }
@@ -31,18 +43,29 @@ export async function POST(req: NextRequest) {
     }
 
     // --- Google reCAPTCHA Verification ---
-    const recaptchaSecret = process.env.RECAPTCHA_SECRET_KEY
-    if (!recaptchaSecret) {
-      return NextResponse.json({ error: "reCAPTCHA secret key not configured." }, { status: 500 })
-    }
-    const recaptchaRes = await fetch("https://www.google.com/recaptcha/api/siteverify", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: `secret=${recaptchaSecret}&response=${captchaToken}`,
-    })
-    const recaptchaData = await recaptchaRes.json()
-    if (!recaptchaData.success) {
-      return NextResponse.json({ error: "CAPTCHA verification failed." }, { status: 403 })
+    const isDev = process.env.NODE_ENV === 'development'
+    
+    if (!isDev) {
+      const recaptchaSecret = process.env.RECAPTCHA_SECRET_KEY
+      if (!recaptchaSecret) {
+        return NextResponse.json({ error: "reCAPTCHA secret key not configured." }, { status: 500 })
+      }
+      
+      console.log('Verifying CAPTCHA with token:', captchaToken?.substring(0, 20) + '...')
+      
+      const recaptchaRes = await fetch("https://www.google.com/recaptcha/api/siteverify", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `secret=${recaptchaSecret}&response=${captchaToken}`,
+      })
+      const recaptchaData = await recaptchaRes.json()
+      console.log('CAPTCHA verification result:', recaptchaData)
+      
+      if (!recaptchaData.success) {
+        return NextResponse.json({ error: "CAPTCHA verification failed." }, { status: 403 })
+      }
+    } else {
+      console.log('Development mode: Skipping CAPTCHA verification')
     }
 
     // Use OS temp directory for file storage (works in both local and production)
@@ -51,20 +74,37 @@ export async function POST(req: NextRequest) {
     const uploadsDir = path.join(tempDir, "insight-engine-uploads")
     await fs.mkdir(uploadsDir, { recursive: true })
 
-    const fileBuffer = Buffer.from(await file.arrayBuffer())
     const jobId = randomUUID()
-    const filePath = path.join(uploadsDir, `${jobId}-${file.name}`)
-    await fs.writeFile(filePath, fileBuffer)
+    const fileName = `ocr-extracted-${jobId}.txt`
+    const filePath = path.join(uploadsDir, fileName)
+console.log("filePath================",filePath)
+    // Write the extracted text to a temporary file
+    await fs.writeFile(filePath, text || 'dummy text', 'utf-8')
 
+    // Create job record
     const job: Job = {
       id: jobId,
       status: "pending",
       filePath,
-      mimeType: file.type,
+      mimeType: "text/plain",
       email,
       marketingOptIn,
       createdAt: new Date(),
     }
+    // const fileBuffer = Buffer.from(await file.arrayBuffer())
+    // const jobId = randomUUID()
+    // const filePath = path.join(uploadsDir, `${jobId}-${file.name}`)
+    // await fs.writeFile(filePath, fileBuffer)
+
+    // const job: Job = {
+    //   id: jobId,
+    //   status: "pending",
+    //   filePath,
+    //   mimeType: file.type,
+    //   email,
+    //   marketingOptIn,
+    //   createdAt: new Date(),
+    // }
     await createJob(job)
 
     // Start the analysis in the background (do not await it)

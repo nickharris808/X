@@ -11,7 +11,9 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import Report from "@/components/Report"
-import ReCAPTCHA from "react-google-recaptcha";
+import ReCAPTCHA from "react-google-recaptcha"
+import PdfOcrProcessor from "@/components/PdfOcrProcessor"
+
 export default function InsightEngine() {
   const [file, setFile] = useState<File | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -24,12 +26,17 @@ export default function InsightEngine() {
   const [jobStatus, setJobStatus] = useState<string | null>(null)
   const [jobError, setJobError] = useState<string | null>(null)
   const [finalReport, setFinalReport] = useState<any>(null)
+  const [isOcrProcessing, setIsOcrProcessing] = useState(false)
+  const [ocrText, setOcrText] = useState<string | null>(null)
+  const [ocrProgress, setOcrProgress] = useState<{ current: number; total: number; stage: string } | null>(null)
+
   const pollingRef = useRef<NodeJS.Timeout | null>(null)
 
   const handleFileChange = (selectedFile: File | null) => {
     if (selectedFile) {
       setFile(selectedFile)
       setShowModal(true)
+      setIsOcrProcessing(true)
     }
   }
 
@@ -55,7 +62,8 @@ export default function InsightEngine() {
     e.stopPropagation()
     setIsDragging(false)
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFileChange(e.dataTransfer.files[0])
+      const droppedFile = e.dataTransfer.files[0]
+      handleFileChange(droppedFile)
       e.dataTransfer.clearData()
     }
   }
@@ -63,34 +71,124 @@ export default function InsightEngine() {
   const handleRemoveFile = () => {
     setFile(null)
     setShowModal(false)
+    setIsOcrProcessing(false)
+    setOcrText(null)
+  }
+
+  const handleOcrTextExtracted = (text: string) => {
+    setOcrText(text)
+    const currentText = text
+    if (isProcessing && jobStatus === "parsing") {
+      setTimeout(() => {
+        handleOcrProcessingComplete(currentText)
+      }, 50)
+    }
+  }
+  const checkOcrComplete = async (text: string) => {
+    
+    try {
+      // Retrieve data from sessionStorage
+      const storedEmail = sessionStorage.getItem('analysisEmail')
+      const storedCaptchaToken = sessionStorage.getItem('analysisCaptchaToken')
+      const storedFileData = sessionStorage.getItem('analysisFileData')
+     
+      if (!storedEmail || !storedFileData) {
+        throw new Error("Session data is missing")
+      }
+      
+      // In development mode, captchaToken might not be required
+      const isDev = process.env.NODE_ENV === 'development'
+      if (!isDev && !storedCaptchaToken) {
+        throw new Error("CAPTCHA token is missing")
+      }
+      
+      // Convert base64 back to blob
+      const fileBlob = await base64ToBlob(storedFileData)
+      
+      const formData = new FormData()
+      formData.append("file", fileBlob)
+      formData.append("email", storedEmail)
+      if (storedCaptchaToken) {
+        formData.append("captchaToken", storedCaptchaToken)
+      }
+      formData.append("marketingOptIn", "false")
+      formData.append("text", text)
+      const res = await fetch("/api/start-analysis", {
+        method: "POST",
+        body: formData,
+      })
+      const data = await res.json()
+      
+      if (!res.ok) {
+        throw new Error(data.error || `Failed to start analysis (${res.status})`)
+      }
+      setJobId(data.jobId)
+      pollJobStatus(data.jobId)
+    } catch (err: any) {
+      setIsProcessing(false)
+      setJobError(err.message || "Failed to start analysis")
+    }
+  }
+  const handleOcrProcessingComplete = async (text?: string) => {
+    const currentText = text || ocrText
+    setOcrText(currentText)
+    setIsOcrProcessing(false)
+    setOcrProgress(null)
+    setJobStatus("prompting")
+    if(currentText && currentText.length > 0){
+      checkOcrComplete(currentText)
+    }
+  }
+
+  const handleOcrProgress = (progress: { current: number; total: number; stage: string }) => {
+    setOcrProgress(progress)
   }
 
   const handleStartAnalysis = async () => {
-    if (email && captchaToken && file) {
+    // For development, allow skipping captcha
+    const isDev = process.env.NODE_ENV === 'development';
+    if (email && (captchaToken || isDev) && file) {
+      // Store data in sessionStorage before closing modal
+      sessionStorage.setItem('analysisEmail', email)
+      sessionStorage.setItem('analysisCaptchaToken', captchaToken || '')
+      sessionStorage.setItem('analysisFile', JSON.stringify({
+        name: file.name,
+        type: file.type,
+        size: file.size
+      }))
+      sessionStorage.setItem('analysisFileData', await fileToBase64(file))
+      
       setShowModal(false)
       setIsProcessing(true)
       setJobError(null)
       setFinalReport(null)
-      setJobStatus("pending")
-      try {
-        const formData = new FormData()
-        formData.append("file", file)
-        formData.append("email", email)
-        formData.append("captchaToken", captchaToken)
-        formData.append("marketingOptIn", "false")
-        const res = await fetch("/api/start-analysis", {
-          method: "POST",
-          body: formData,
-        })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data.error || "Failed to start analysis")
-        setJobId(data.jobId)
-        pollJobStatus(data.jobId)
-      } catch (err: any) {
-        setIsProcessing(false)
-        setJobError(err.message || "Failed to start analysis")
-      }
+      setJobStatus("parsing") // Start with parsing status
     }
+  }
+
+  // Helper function to convert file to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = error => reject(error)
+    })
+  }
+
+  // Helper function to convert base64 back to blob
+  const base64ToBlob = (base64: string): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const arr = base64.split(',')
+      const mime = arr[0].match(/:(.*?);/)?.[1] || 'application/pdf'
+      const bstr = atob(arr[1])
+      let n = bstr.length
+      const u8arr = new Uint8Array(n)
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n)
+      }
+      resolve(new Blob([u8arr], { type: mime }))
+    })
   }
 
   const pollJobStatus = (jobId: string) => {
@@ -105,14 +203,29 @@ export default function InsightEngine() {
           setFinalReport(data.finalReport)
           setIsProcessing(false)
           clearInterval(pollingRef.current as NodeJS.Timeout)
+          // Clean up sessionStorage
+          sessionStorage.removeItem('analysisEmail')
+          sessionStorage.removeItem('analysisCaptchaToken')
+          sessionStorage.removeItem('analysisFile')
+          sessionStorage.removeItem('analysisFileData')
         } else if (data.status === "error") {
           setIsProcessing(false)
           clearInterval(pollingRef.current as NodeJS.Timeout)
+          // Clean up sessionStorage
+          sessionStorage.removeItem('analysisEmail')
+          sessionStorage.removeItem('analysisCaptchaToken')
+          sessionStorage.removeItem('analysisFile')
+          sessionStorage.removeItem('analysisFileData')
         }
       } catch (err: any) {
         setJobError("Failed to fetch job status")
         setIsProcessing(false)
         clearInterval(pollingRef.current as NodeJS.Timeout)
+        // Clean up sessionStorage
+        sessionStorage.removeItem('analysisEmail')
+        sessionStorage.removeItem('analysisCaptchaToken')
+        sessionStorage.removeItem('analysisFile')
+        sessionStorage.removeItem('analysisFileData')
       }
     }
     poll()
@@ -133,6 +246,8 @@ export default function InsightEngine() {
         userEmail={email}
         jobStatus={jobStatus}
         jobError={jobError}
+        ocrProgress={ocrProgress}
+        fileType={file?.type}
       />
     )
   }
@@ -337,11 +452,21 @@ export default function InsightEngine() {
                       <p className="text-sm text-gray-500">PDF, DOCX</p>
                     </div>
                   </div>
+                ) : isOcrProcessing ? (
+                  <div className="bg-white p-6 rounded-lg shadow-md">
+                    <h3 className="text-lg font-semibold mb-4">Processing PDF with OCR</h3>
+                    <PdfOcrProcessor
+                      file={file}
+                      onTextExtracted={handleOcrTextExtracted}
+                      onProcessingComplete={handleOcrProcessingComplete}
+                      onProgress={handleOcrProgress}
+                    />
+                  </div>
                 ) : (
                   <div className="bg-white p-4 rounded-lg shadow-md flex items-center justify-between text-left">
                     <div className="flex items-center space-x-3">
                       <File className="h-6 w-6 text-brand-green" />
-                      <span className="font-medium">{file.name}</span>
+                      <span className="font-medium">{file?.name}</span>
                     </div>
                     <button onClick={handleRemoveFile} className="p-1 rounded-full hover:bg-gray-100">
                       <X className="h-5 w-5 text-gray-500" />
@@ -434,18 +559,19 @@ export default function InsightEngine() {
                     I agree to receive occasional updates from Xcellerant Ventures.
                   </label>
                 </div>
-                {/* Mock CAPTCHA */}
+                {/* CAPTCHA - Optional for demo */}
                 <div className="flex items-center justify-between p-3 bg-gray-100 rounded-md">
-                 
-                    <ReCAPTCHA
-                      sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ""}
-                      onChange={(token: string) => setCaptchaToken(token)}
-                    />
-                 
+                  <ReCAPTCHA
+                    sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || ""}
+                    onChange={(token: string | null) => setCaptchaToken(token)}
+                  />
                 </div>
+                <p className="text-xs text-gray-500 text-center">
+                  CAPTCHA is required for security. Please complete it to continue.
+                </p>
                 <Button
                   onClick={handleStartAnalysis}
-                  disabled={!email || !captchaToken}
+                  disabled={!email || (!captchaToken && process.env.NODE_ENV !== 'development') || !file}
                   className="w-full bg-brand-green hover:bg-brand-green-light text-white font-bold py-3 disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
                   Start Analysis
@@ -459,7 +585,19 @@ export default function InsightEngine() {
   )
 }
 
-function ProcessingPage({ userEmail, jobStatus, jobError }: { userEmail: string, jobStatus: string | null, jobError: string | null }) {
+function ProcessingPage({ 
+  userEmail, 
+  jobStatus, 
+  jobError, 
+  ocrProgress,
+  fileType
+}: { 
+  userEmail: string, 
+  jobStatus: string | null, 
+  jobError: string | null,
+  ocrProgress?: { current: number; total: number; stage: string } | null,
+  fileType?: string
+}) {
   const statusSteps = [
     { name: "Parsing Document", key: "parsing" },
     { name: "Generating Research Plan", key: "prompting" },
@@ -467,7 +605,9 @@ function ProcessingPage({ userEmail, jobStatus, jobError }: { userEmail: string,
     { name: "Synthesizing Final Report", key: "synthesizing" },
     { name: "Complete", key: "complete" },
   ]
-  const currentStep = statusSteps.findIndex(s => s.key === jobStatus)
+  
+  // Determine current step - if jobStatus is null, we're in parsing phase
+  const currentStep = jobStatus ? statusSteps.findIndex(s => s.key === jobStatus) : 0
 
   return (
     <div className="bg-[#F4F4F4] min-h-screen flex flex-col items-center justify-center text-center p-6">
@@ -493,9 +633,26 @@ function ProcessingPage({ userEmail, jobStatus, jobError }: { userEmail: string,
                 currentStep === index ? <LoaderIcon className="h-6 w-6 text-gray-500 animate-spin" /> :
                 <div className="h-6 w-6 rounded-full bg-gray-300" />
               }</div>
-              <p className={`text-lg ${currentStep === index ? "font-bold" : ""} ${currentStep < index ? "text-gray-500" : "text-[#1D1D1D]"}`}>
-                {item.name}
-              </p>
+              <div className="flex-1">
+                <p className={`text-lg ${currentStep === index ? "font-bold" : ""} ${currentStep < index ? "text-gray-500" : "text-[#1D1D1D]"}`}>
+                  {item.name}
+                </p>
+                {currentStep === index && item.key === "parsing" && (
+                  <div className="mt-2">
+                    {ocrProgress && (
+                      <>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${(ocrProgress.current / ocrProgress.total) * 100}%` }}
+                          />
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1">{ocrProgress.stage}</p>
+                      </>
+                    )} 
+                  </div>
+                )}
+              </div>
             </motion.div>
           ))}
         </div>

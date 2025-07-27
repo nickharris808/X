@@ -7,7 +7,7 @@
     "dev": "next dev",
     "lint": "next lint",
     "start": "next start",
-    "postinstall": "patch-package" 
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@emotion/is-prop-valid": "latest",
@@ -40,6 +40,7 @@
     "@radix-ui/react-toggle-group": "1.1.1",
     "@radix-ui/react-tooltip": "1.1.6",
     "autoprefixer": "^10.4.20",
+    "canvas": "^3.1.2",
     "child_process": "latest",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -63,9 +64,11 @@
     "patch-package": "^8.0.0",
     "path": "latest",
     "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "^2.10.377",
     "react": "^19",
     "react-day-picker": "8.10.1",
     "react-dom": "^19",
+    "react-dropzone": "^14.3.8",
     "react-google-recaptcha": "^3.1.0",
     "react-hook-form": "^7.54.1",
     "react-is": "^19.1.0",
@@ -74,6 +77,7 @@
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
+    "tesseract.js": "^2.1.5",
     "vaul": "^0.9.6",
     "ws": "latest",
     "zod": "^3.24.1"

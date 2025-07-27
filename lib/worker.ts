@@ -3,65 +3,56 @@ import path from "path"
 import { exec } from "child_process"
 import mammoth from "mammoth"
 import OpenAI from "openai"
+
 import { getJob, updateJob } from "./jobs"
 import { sendErrorEmail } from "./email"
+
+// Polyfills for Node.js environment
+if (typeof globalThis.DOMMatrix === 'undefined') {
+  (globalThis as any).DOMMatrix = class {
+    a: number = 1;
+    b: number = 0;
+    c: number = 0;
+    d: number = 1;
+    e: number = 0;
+    f: number = 0;
+    constructor() {}
+  };
+}
+
+if (typeof globalThis.DOMPoint === 'undefined') {
+  (globalThis as any).DOMPoint = class {
+    x: number;
+    y: number;
+    constructor(x = 0, y = 0) {
+      this.x = x;
+      this.y = y;
+    }
+  };
+}
+
+if (typeof globalThis.DOMRect === 'undefined') {
+  (globalThis as any).DOMRect = class {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    constructor(x = 0, y = 0, width = 0, height = 0) {
+      this.x = x;
+      this.y = y;
+      this.width = width;
+      this.height = height;
+    }
+  };
+}
+
+// OCR configuration for serverless environment
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
-// --- Step 2: Document Parsing ("Reading Any Document") ---
-async function parseDocument(filePath: string, mimeType: string): Promise<string> {
-  console.log(`[${path.basename(filePath)}] Parsing document with type: ${mimeType}`)
 
-  // Strategy 1: Direct Parsing for Common Types
-  if (mimeType === "application/pdf") {
-    try {
-      const dataBuffer = await fs.readFile(filePath)
-      const pdf = (await import("pdf-parse")).default
-      const data = await pdf(dataBuffer)
-      if (!data.text || data.text.trim().length === 0) {
-        throw new Error("PDF contains no extractable text. It might be an image-only PDF.")
-      }
-      return data.text
-    } catch (error) {
-      console.error("PDF parsing failed:", error)
-      throw new Error("Failed to parse PDF. For image-based PDFs, OCR is required.")
-    }
-  }
-
-  if (mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-    const { value } = await mammoth.extractRawText({ path: filePath })
-    return value
-  }
-
-  // Strategy 2: Conversion Fallback for Complex Types (e.g., PPTX)
-  if (mimeType === "application/vnd.openxmlformats-officedocument.presentationml.presentation") {
-    return new Promise((resolve, reject) => {
-      const outputDir = path.dirname(filePath)
-      const outputPdfPath = path.join(outputDir, `${path.basename(filePath)}.pdf`)
-      const command = `unoconv -f pdf -o "${outputPdfPath}" "${filePath}"`
-      console.log(`[${path.basename(filePath)}] Executing unoconv: ${command}`)
-
-      exec(command, async (error, stdout, stderr) => {
-        if (error) {
-          console.error(`unoconv error: ${stderr}`)
-          return reject(new Error("Failed to convert PPTX to PDF. Ensure 'unoconv' and LibreOffice are installed."))
-        }
-        try {
-          console.log(`[${path.basename(filePath)}] Converted PPTX to PDF, now parsing.`)
-          const pdfText = await parseDocument(outputPdfPath, "application/pdf")
-          await fs.unlink(outputPdfPath) // Clean up intermediate PDF
-          resolve(pdfText)
-        } catch (parseError) {
-          reject(parseError)
-        }
-      })
-    })
-  }
-
-  throw new Error(`Unsupported file type for parsing: ${mimeType}`)
-}
 
 export async function runAnalysis(jobId: string) {
   const job = await getJob(jobId)
@@ -71,9 +62,18 @@ export async function runAnalysis(jobId: string) {
   }
 
   try {
-    await updateJob(jobId, { status: "parsing" })
-    const rawText = await parseDocument(job.filePath, job.mimeType)
-    console.log(`[${job.id}] Document parsed successfully. Text length: ${rawText.length}`)
+    let rawText: string;
+    
+    // If it's a text file (OCR processed), read the text directly
+    if (job.mimeType === "text/plain") {
+      // Text is already parsed on client side, just load it
+      rawText = await fs.readFile(job.filePath, 'utf-8')
+      console.log(`[${job.id}] OCR text loaded successfully. Text length: ${rawText.length}`, rawText,"rawText============")
+    } else {
+      // For other files, we need to implement document parsing
+      // For now, throw an error since parseDocument was removed
+      throw new Error("Document parsing not implemented for non-text files")
+    }
 
     // --- Step 3: Intelligent Prompt Generation ---
     await updateJob(jobId, { status: "prompting" })
