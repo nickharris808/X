@@ -138,8 +138,7 @@ export default function Report({ report }: { report: any }) {
       <header className="sticky top-0 bg-white/80 backdrop-blur-sm z-20 border-b">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center space-x-2">
-            <Image src="/logo.png" alt="Xcellerant Ventures Logo" width={32} height={32} />
-            <span className="text-xl font-bold">Xcellerant Ventures</span>
+            <Image src="/logo.png" alt="Xcellerant Ventures Logo" width={190} height={52} />
           </Link>
           <div className="flex items-center space-x-2 sm:space-x-4">
             <div className="relative flex items-center">
