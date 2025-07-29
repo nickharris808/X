@@ -30,6 +30,7 @@ export default function InsightEngine() {
   const [isJobCreating, setIsJobCreating] = useState(false)
   const [hasStartedJob, setHasStartedJob] = useState(false)
   const [processingJobId, setProcessingJobId] = useState<string | null>(null)
+  const [isRedirecting, setIsRedirecting] = useState(false)
 
   const pollingRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -221,6 +222,7 @@ export default function InsightEngine() {
       setJobStatus("parsing") // Start with parsing status
       setHasStartedJob(false) // Reset job start flag
       setProcessingJobId(null) // Reset processing job ID
+      setIsRedirecting(false) // Reset redirecting state
       sessionStorage.removeItem('processedTextHash') // Clear processed text hash
     }
   }
@@ -231,18 +233,35 @@ export default function InsightEngine() {
     if (pollingRef.current) clearInterval(pollingRef.current)
     const poll = async () => {
       try {
-        const res = await fetch(`/api/start-analysis?jobId=${jobId}`)
+        const res = await fetch(`/api/jobs/${jobId}`)
         const data = await res.json()
+        console.log('📊 Job Status Update:', { jobId, status: data.status, hasFinalReport: !!data.finalReport })
         setJobStatus(data.status)
         setJobError(data.error)
-        if (data.status === "complete" && data.finalReport) {
+        if ((data.status === "completed" || data.status === "complete") && data.finalReport) {
+          console.log('🎉 Analysis Complete! Redirecting to report...')
           setFinalReport(data.finalReport)
           setIsProcessing(false)
+          setIsRedirecting(true) // Set redirecting state to prevent landing page flash
           clearInterval(pollingRef.current as NodeJS.Timeout)
+          
+          // Generate and log the report link
+          const reportUrl = `${window.location.origin}/report/${jobId}`
+          console.log('📧 Report Link Generated:', reportUrl)
+          console.log('📧 Email this link to the user:', reportUrl)
+          
+          // TODO: Uncomment when email service is ready
+          // await sendEmailWithReportLink(data.email, reportUrl, data.finalReport)
+          
           // Clean up sessionStorage
           sessionStorage.removeItem('analysisEmail')
           sessionStorage.removeItem('analysisCaptchaToken')
           sessionStorage.removeItem('analysisFile')
+          
+          // Smooth redirect with a small delay to show completion state
+          setTimeout(() => {
+            window.location.href = reportUrl
+          }, 1000) // 1 second delay to show completion
         } else if (data.status === "error") {
           setIsProcessing(false)
           clearInterval(pollingRef.current as NodeJS.Timeout)
@@ -269,8 +288,19 @@ export default function InsightEngine() {
     document.getElementById("upload-section")?.scrollIntoView({ behavior: "smooth" })
   }
 
-  if (finalReport) {
-    return <Report report={finalReport} />
+  // This is now handled in the polling function with immediate redirect
+
+  if (isRedirecting) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-green-600 text-6xl mb-4">✅</div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Analysis Complete!</h1>
+          <p className="text-gray-600 mb-4">Your report is ready. Redirecting you now...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+        </div>
+      </div>
+    )
   }
 
   if (isProcessing) {
@@ -281,6 +311,7 @@ export default function InsightEngine() {
         jobError={jobError}
         ocrProgress={ocrProgress}
         fileType={file?.type}
+        jobId={jobId}
       />
     )
   }
@@ -623,13 +654,15 @@ function ProcessingPage({
   jobStatus, 
   jobError, 
   ocrProgress,
-  fileType
+  fileType,
+  jobId
 }: { 
   userEmail: string, 
   jobStatus: string | null, 
   jobError: string | null,
   ocrProgress?: { current: number; total: number; stage: string } | null,
-  fileType?: string
+  fileType?: string,
+  jobId?: string | null
 }) {
   const statusSteps = [
     { name: "Parsing Document", key: "parsing" },
@@ -637,10 +670,14 @@ function ProcessingPage({
     { name: "Conducting Deep Research", key: "researching" },
     { name: "Synthesizing Final Report", key: "synthesizing" },
     { name: "Complete", key: "complete" },
+    { name: "Complete", key: "completed" },
   ]
   
   // Determine current step - if jobStatus is null, we're in parsing phase
   const currentStep = jobStatus ? statusSteps.findIndex(s => s.key === jobStatus) : 0
+  
+  // Check if analysis is complete
+  const isComplete = jobStatus === 'complete' || jobStatus === 'completed'
 
   return (
     <div className="bg-[#F4F4F4] min-h-screen flex flex-col items-center justify-center text-center p-6">
@@ -690,10 +727,21 @@ function ProcessingPage({
           ))}
         </div>
         {jobError && <p className="mt-6 text-red-600 font-bold">{jobError}</p>}
-        <p className="mt-12 text-gray-600">
-          Your report is being generated. This typically takes <span className="font-bold text-[#1D1D1D]">5-10 minutes</span>. Please keep this tab open to see the results.<br />
-          We will also send a link to <span className="font-bold text-[#1D1D1D]">{userEmail}</span> as soon as it's ready.
-        </p>
+        {isComplete ? (
+          <div className="mt-12">
+            <div className="text-green-600 text-4xl mb-4">✅</div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Analysis Complete!</h3>
+            <p className="text-gray-600 mb-4">
+              Your report is ready. Redirecting you to the results...
+            </p>
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+          </div>
+        ) : (
+          <p className="mt-12 text-gray-600">
+            Your report is being generated. This typically takes <span className="font-bold text-[#1D1D1D]">5-10 minutes</span>. Please keep this tab open to see the results.<br />
+            We will also send a link to <span className="font-bold text-[#1D1D1D]">{userEmail}</span> as soon as it's ready.
+          </p>
+        )}
         <Link href="/report-example">
           <Button className="mt-8 bg-brand-green hover:bg-brand-green-light text-white">View Example Report</Button>
         </Link>

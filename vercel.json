@@ -5,6 +5,9 @@
     },
     "app/api/create-job/route.ts": {
       "maxDuration": 60
+    },
+    "app/api/jobs/[jobId]/route.ts": {
+      "maxDuration": 30
     }
   },
   "routes": [
@@ -20,6 +23,15 @@
     {
       "src": "/api/create-job",
       "dest": "/api/create-job",
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization"
+      }
+    },
+    {
+      "src": "/api/jobs/(.*)",
+      "dest": "/api/jobs/[jobId]",
       "headers": {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
