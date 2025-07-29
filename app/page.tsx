@@ -90,10 +90,10 @@ export default function InsightEngine() {
       // Retrieve data from sessionStorage
       const storedEmail = sessionStorage.getItem('analysisEmail')
       const storedCaptchaToken = sessionStorage.getItem('analysisCaptchaToken')
-      const storedFileData = sessionStorage.getItem('analysisFileData')
+      const storedFile = sessionStorage.getItem('analysisFile')
      
-      if (!storedEmail || !storedFileData) {
-        throw new Error("Session data is missing")
+      if (!storedEmail || !storedFile || !file) {
+        throw new Error("Session data or file is missing")
       }
       
       // In development mode, captchaToken might not be required
@@ -102,11 +102,8 @@ export default function InsightEngine() {
         throw new Error("CAPTCHA token is missing")
       }
       
-      // Convert base64 back to blob
-      const fileBlob = await base64ToBlob(storedFileData)
-      
       const formData = new FormData()
-      formData.append("file", fileBlob)
+      formData.append("file", file)
       formData.append("email", storedEmail)
       if (storedCaptchaToken) {
         formData.append("captchaToken", storedCaptchaToken)
@@ -156,7 +153,6 @@ export default function InsightEngine() {
         type: file.type,
         size: file.size
       }))
-      sessionStorage.setItem('analysisFileData', await fileToBase64(file))
       
       setShowModal(false)
       setIsProcessing(true)
@@ -166,30 +162,7 @@ export default function InsightEngine() {
     }
   }
 
-  // Helper function to convert file to base64
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.readAsDataURL(file)
-      reader.onload = () => resolve(reader.result as string)
-      reader.onerror = error => reject(error)
-    })
-  }
 
-  // Helper function to convert base64 back to blob
-  const base64ToBlob = (base64: string): Promise<Blob> => {
-    return new Promise((resolve, reject) => {
-      const arr = base64.split(',')
-      const mime = arr[0].match(/:(.*?);/)?.[1] || 'application/pdf'
-      const bstr = atob(arr[1])
-      let n = bstr.length
-      const u8arr = new Uint8Array(n)
-      while (n--) {
-        u8arr[n] = bstr.charCodeAt(n)
-      }
-      resolve(new Blob([u8arr], { type: mime }))
-    })
-  }
 
   const pollJobStatus = (jobId: string) => {
     if (pollingRef.current) clearInterval(pollingRef.current)
@@ -207,7 +180,6 @@ export default function InsightEngine() {
           sessionStorage.removeItem('analysisEmail')
           sessionStorage.removeItem('analysisCaptchaToken')
           sessionStorage.removeItem('analysisFile')
-          sessionStorage.removeItem('analysisFileData')
         } else if (data.status === "error") {
           setIsProcessing(false)
           clearInterval(pollingRef.current as NodeJS.Timeout)
@@ -215,7 +187,6 @@ export default function InsightEngine() {
           sessionStorage.removeItem('analysisEmail')
           sessionStorage.removeItem('analysisCaptchaToken')
           sessionStorage.removeItem('analysisFile')
-          sessionStorage.removeItem('analysisFileData')
         }
       } catch (err: any) {
         setJobError("Failed to fetch job status")
@@ -225,7 +196,6 @@ export default function InsightEngine() {
         sessionStorage.removeItem('analysisEmail')
         sessionStorage.removeItem('analysisCaptchaToken')
         sessionStorage.removeItem('analysisFile')
-        sessionStorage.removeItem('analysisFileData')
       }
     }
     poll()

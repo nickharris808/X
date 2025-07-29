@@ -105,13 +105,25 @@ console.log("filePath================",filePath)
     //   marketingOptIn,
     //   createdAt: new Date(),
     // }
-    await createJob(job)
+    try {
+      await createJob(job)
+      console.log('Job created successfully:', jobId)
+      
+      // Start the analysis in the background (do not await it)
+      runAnalysis(jobId)
 
-    // Start the analysis in the background (do not await it)
-    runAnalysis(jobId)
-
-    // Immediately respond to the client
-    return NextResponse.json({ message: "Analysis started.", jobId }, { status: 202 })
+      // Immediately respond to the client
+      return NextResponse.json({ message: "Analysis started.", jobId }, { status: 202 })
+    } catch (dbError) {
+      console.error('Failed to create job in database:', dbError)
+      // Clean up the file if job creation failed
+      try {
+        await fs.unlink(filePath)
+      } catch (cleanupError) {
+        console.error('Failed to cleanup file:', cleanupError)
+      }
+      return NextResponse.json({ error: "Failed to create job. Please try again." }, { status: 500 })
+    }
   } catch (error: any) {
     console.error("Failed to start analysis:", error)
     return NextResponse.json({ error: "Internal server error." }, { status: 500 })
