@@ -10,6 +10,9 @@ const nextConfig = {
     unoptimized: true,
   },
   serverExternalPackages: ['pdf-parse', 'pdfjs-dist', 'tesseract.js'],
+  experimental: {
+    serverComponentsExternalPackages: ['pdf-parse', 'pdfjs-dist', 'tesseract.js'],
+  },
   webpack: (config, { isServer }) => {
     if (isServer) {
       config.externals.push({

@@ -41,6 +41,14 @@ export async function POST(req: NextRequest) {
     if (!email || !captchaToken) {
       return NextResponse.json({ error: "Email and CAPTCHA token are required." }, { status: 400 })
     }
+    
+    // Check text size (Vercel has 4.5MB payload limit)
+    const maxTextSize = 10 * 1024 * 1024 // 10MB limit
+    if (text && text.length > maxTextSize) {
+      return NextResponse.json({ 
+        error: "Text content is too large. Please try with a smaller document or contact support." 
+      }, { status: 413 })
+    }
 
     // --- Google reCAPTCHA Verification ---
     const isDev = process.env.NODE_ENV === 'development'
@@ -78,8 +86,14 @@ export async function POST(req: NextRequest) {
     const fileName = `ocr-extracted-${jobId}.txt`
     const filePath = path.join(uploadsDir, fileName)
 console.log("filePath================",filePath)
+    // Truncate text if it's too large (Vercel has 4.5MB payload limit)
+    const maxTextLength = 100000 // ~100KB limit to be safe
+    const truncatedText = text && text.length > maxTextLength 
+      ? text.substring(0, maxTextLength) + '\n\n[Text truncated due to size limits]'
+      : text || 'dummy text'
+    
     // Write the extracted text to a temporary file
-    await fs.writeFile(filePath, text || 'dummy text', 'utf-8')
+    await fs.writeFile(filePath, truncatedText, 'utf-8')
 
     // Create job record
     const job: Job = {
