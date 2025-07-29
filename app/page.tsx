@@ -1,8 +1,6 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Upload, File, X, Menu, BarChart, Swords, Users } from "lucide-react"
@@ -29,8 +27,20 @@ export default function InsightEngine() {
   const [isOcrProcessing, setIsOcrProcessing] = useState(false)
   const [ocrText, setOcrText] = useState<string | null>(null)
   const [ocrProgress, setOcrProgress] = useState<{ current: number; total: number; stage: string } | null>(null)
+  const [isJobCreating, setIsJobCreating] = useState(false)
+  const [hasStartedJob, setHasStartedJob] = useState(false)
+  const [processingJobId, setProcessingJobId] = useState<string | null>(null)
 
   const pollingRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current)
+      }
+    }
+  }, [])
 
   const handleFileChange = (selectedFile: File | null) => {
     if (selectedFile) {
@@ -76,17 +86,27 @@ export default function InsightEngine() {
   }
 
   const handleOcrTextExtracted = (text: string) => {
+    console.log('handleOcrTextExtracted called with text length:', text.length)
     setOcrText(text)
-    const currentText = text
-    if (isProcessing && jobStatus === "parsing") {
-      setTimeout(() => {
-        handleOcrProcessingComplete(currentText)
-      }, 50)
-    }
+    // Don't call handleOcrProcessingComplete here - let it be called only once
   }
-  const checkOcrComplete = async (text: string) => {
+    const checkOcrComplete = async (text: string) => {
     
     try {
+      // Create a unique identifier for this text to prevent duplicates
+      const textHash = btoa(text.substring(0, 100)).replace(/[^a-zA-Z0-9]/g, '')
+      
+      // Prevent multiple calls
+      if (isProcessing || isJobCreating || hasStartedJob || processingJobId === textHash) {
+        console.log('Already processing, creating job, job already started, or processing same text, skipping duplicate call')
+        console.log('isProcessing:', isProcessing, 'isJobCreating:', isJobCreating, 'hasStartedJob:', hasStartedJob, 'processingJobId:', processingJobId, 'textHash:', textHash)
+        return
+      }
+      
+      setIsJobCreating(true)
+      setHasStartedJob(true)
+      setProcessingJobId(textHash)
+      
       // Retrieve data from sessionStorage
       const storedEmail = sessionStorage.getItem('analysisEmail')
       const storedCaptchaToken = sessionStorage.getItem('analysisCaptchaToken')
@@ -102,114 +122,76 @@ export default function InsightEngine() {
         throw new Error("CAPTCHA token is missing")
       }
       
-      // Generate session ID for this upload
-      const sessionId = crypto.randomUUID()
+      // Create job directly with full text
+      const jobFormData = new FormData()
+      jobFormData.append("text", text)
+      jobFormData.append("email", storedEmail)
+      if (storedCaptchaToken) {
+        jobFormData.append("captchaToken", storedCaptchaToken)
+      }
+      jobFormData.append("marketingOptIn", "false")
+      jobFormData.append("fileName", file.name)
+      jobFormData.append("fileType", file.type)
       
-      // Split text into smaller chunks (1MB per chunk to be safe)
-      const chunkSize = 1 * 1024 * 1024 // 1MB chunks
-      const chunks = []
+      const jobRes = await fetch("/api/create-job", {
+        method: "POST",
+        body: jobFormData,
+      })
       
-      if (text.length > chunkSize) {
-        for (let i = 0; i < text.length; i += chunkSize) {
-          chunks.push(text.slice(i, i + chunkSize))
-        }
-        console.log(`Text split into ${chunks.length} chunks`)
-      } else {
-        chunks.push(text)
+      const jobData = await jobRes.json()
+      
+      if (!jobRes.ok) {
+        throw new Error(jobData.error || `Failed to create job (${jobRes.status})`)
       }
       
-      // Upload all text chunks first
-      for (let i = 0; i < chunks.length; i++) {
-        const chunkFormData = new FormData()
-        chunkFormData.append("text", chunks[i])
-        chunkFormData.append("email", storedEmail)
-        if (storedCaptchaToken) {
-          chunkFormData.append("captchaToken", storedCaptchaToken)
-        }
-        chunkFormData.append("marketingOptIn", "false")
-        chunkFormData.append("chunkIndex", i.toString())
-        chunkFormData.append("totalChunks", chunks.length.toString())
-        chunkFormData.append("sessionId", sessionId)
-        
-        const chunkRes = await fetch("/api/upload-text", {
-          method: "POST",
-          body: chunkFormData,
-        })
-        
-        if (!chunkRes.ok) {
-          throw new Error("Failed to upload text chunk")
-        }
-        
-        const chunkData = await chunkRes.json()
-        console.log(`Chunk ${i + 1}/${chunks.length} uploaded`)
-        
-                          // If this is the last chunk and it's complete, start analysis
-         if (chunkData.isComplete) {
-           // Job is already created, now start analysis
-           setJobId(chunkData.jobId)
-           
-           // Start the analysis
-           const startFormData = new FormData()
-           startFormData.append("jobId", chunkData.jobId)
-           
-           await fetch("/api/start-analysis", {
-             method: "POST",
-             body: startFormData,
-           })
-           
-           pollJobStatus(chunkData.jobId)
-           return
-         }
+      setJobId(jobData.jobId)
+      
+      // If it's a duplicate job, don't start analysis again
+      if (jobData.isDuplicate) {
+        console.log('Using existing job, starting polling')
+        pollJobStatus(jobData.jobId)
+        return
       }
       
-                    // If we get here, it means single chunk upload - create job directly
-       const jobFormData = new FormData()
-       jobFormData.append("text", text)
-       jobFormData.append("email", storedEmail)
-       if (storedCaptchaToken) {
-         jobFormData.append("captchaToken", storedCaptchaToken)
-       }
-       jobFormData.append("marketingOptIn", "false")
-       jobFormData.append("chunkIndex", "0")
-       jobFormData.append("totalChunks", "1")
-       jobFormData.append("sessionId", sessionId)
-       
-       const jobRes = await fetch("/api/upload-text", {
-         method: "POST",
-         body: jobFormData,
-       })
-       
-       const jobData = await jobRes.json()
-       
-       if (!jobRes.ok) {
-         throw new Error(jobData.error || `Failed to create job (${jobRes.status})`)
-       }
-       
-       setJobId(jobData.jobId)
-       
-       // Start the analysis
-       const startFormData = new FormData()
-       startFormData.append("jobId", jobData.jobId)
-       
-       await fetch("/api/start-analysis", {
-         method: "POST",
-         body: startFormData,
-       })
-       
-       pollJobStatus(jobData.jobId)
+      // Start the analysis
+      const startFormData = new FormData()
+      startFormData.append("jobId", jobData.jobId)
+      
+      await fetch("/api/start-analysis", {
+        method: "POST",
+        body: startFormData,
+      })
+      
+      pollJobStatus(jobData.jobId)
       
     } catch (err: any) {
       setIsProcessing(false)
       setJobError(err.message || "Failed to start analysis")
+    } finally {
+      setIsJobCreating(false)
     }
   }
   const handleOcrProcessingComplete = async (text?: string) => {
+    console.log('handleOcrProcessingComplete called with text length:', text?.length || ocrText?.length)
+    
+    // Check if we've already processed this text
+    const processedTextHash = sessionStorage.getItem('processedTextHash')
     const currentText = text || ocrText
+    const textHash = currentText ? btoa(currentText.substring(0, 100)).replace(/[^a-zA-Z0-9]/g, '') : ''
+    
+    if (processedTextHash === textHash) {
+      console.log('Text already processed, skipping duplicate call')
+      return
+    }
+    
     setOcrText(currentText)
     setIsOcrProcessing(false)
     setOcrProgress(null)
     setJobStatus("prompting")
+    
     if(currentText && currentText.length > 0){
+      console.log('Calling checkOcrComplete from handleOcrProcessingComplete')
+      sessionStorage.setItem('processedTextHash', textHash)
       checkOcrComplete(currentText)
     }
   }
@@ -230,12 +212,16 @@ export default function InsightEngine() {
         type: file.type,
         size: file.size
       }))
+      sessionStorage.setItem('analysisStarted', Date.now().toString())
       
       setShowModal(false)
       setIsProcessing(true)
       setJobError(null)
       setFinalReport(null)
       setJobStatus("parsing") // Start with parsing status
+      setHasStartedJob(false) // Reset job start flag
+      setProcessingJobId(null) // Reset processing job ID
+      sessionStorage.removeItem('processedTextHash') // Clear processed text hash
     }
   }
 
@@ -504,7 +490,7 @@ export default function InsightEngine() {
                     <h3 className="text-lg font-semibold mb-4">Processing PDF with OCR</h3>
                     <PdfOcrProcessor
                       file={file}
-                      onTextExtracted={handleOcrTextExtracted}
+                      onTextExtracted={() => {}} // Disable this callback to prevent duplicate calls
                       onProcessingComplete={handleOcrProcessingComplete}
                       onProgress={handleOcrProgress}
                     />
