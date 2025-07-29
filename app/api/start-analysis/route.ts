@@ -22,36 +22,22 @@ export async function POST(req: NextRequest) {
     const email = formData.get("email") as string | null
     const marketingOptIn = formData.get("marketingOptIn") === "true"
     const captchaToken = formData.get("captchaToken") as string | null
-    const text = formData.get("text") as string | null
-    const totalChunks = parseInt(formData.get("totalChunks") as string || "1")
-    const chunkIndex = parseInt(formData.get("chunkIndex") as string || "0")
+    const sessionId = formData.get("sessionId") as string | null
+    const combinedFilePath = formData.get("combinedFilePath") as string | null
     
     console.log('Received form data:', {
       hasFile: !!file,
       email: email,
       hasCaptchaToken: !!captchaToken,
-      hasText: !!text,
-      textLength: text?.length,
-      totalChunks,
-      chunkIndex
+      sessionId,
+      hasCombinedFilePath: !!combinedFilePath
     })
     
-    if(!text){
-      return NextResponse.json({ error: "Text is required." }, { status: 400 })
-    }
     if (!file) {
       return NextResponse.json({ error: "File is required." }, { status: 400 })
     }
     if (!email || !captchaToken) {
       return NextResponse.json({ error: "Email and CAPTCHA token are required." }, { status: 400 })
-    }
-    
-    // Check individual chunk size (keep under 4MB for Vercel)
-    const maxChunkSize = 4 * 1024 * 1024 // 4MB per chunk
-    if (text && text.length > maxChunkSize) {
-      return NextResponse.json({ 
-        error: "Individual chunk is too large. Please try with a smaller document." 
-      }, { status: 413 })
     }
 
     // --- Google reCAPTCHA Verification ---
@@ -87,12 +73,18 @@ export async function POST(req: NextRequest) {
     await fs.mkdir(uploadsDir, { recursive: true })
 
     const jobId = randomUUID()
-    const fileName = `ocr-extracted-${jobId}.txt`
-    const filePath = path.join(uploadsDir, fileName)
-console.log("filePath================",filePath)
-    // Write the first chunk to a temporary file
-    const fileText = text || 'dummy text'
-    await fs.writeFile(filePath, fileText, 'utf-8')
+    let filePath: string
+    
+    if (combinedFilePath) {
+      // Use the combined file path from text upload
+      filePath = combinedFilePath
+      console.log("Using combined file path:", filePath)
+    } else {
+      // Create a new file path for single upload
+      const fileName = `ocr-extracted-${jobId}.txt`
+      filePath = path.join(uploadsDir, fileName)
+      console.log("Created new file path:", filePath)
+    }
 
     // Create job record
     const job: Job = {
@@ -122,20 +114,9 @@ console.log("filePath================",filePath)
       await createJob(job)
       console.log('Job created successfully:', jobId)
       
-      // If this is a single chunk or the first chunk, start analysis immediately
-      if (totalChunks === 1) {
-        // Start the analysis in the background (do not await it)
-        runAnalysis(jobId)
-        return NextResponse.json({ message: "Analysis started.", jobId }, { status: 202 })
-      } else {
-        // For multiple chunks, wait for all chunks to be uploaded
-        return NextResponse.json({ 
-          message: "Job created. Uploading chunks...", 
-          jobId,
-          totalChunks,
-          chunkIndex: 0
-        }, { status: 202 })
-      }
+      // Start the analysis in the background (do not await it)
+      runAnalysis(jobId)
+      return NextResponse.json({ message: "Analysis started.", jobId }, { status: 202 })
     } catch (dbError) {
       console.error('Failed to create job in database:', dbError)
       // Clean up the file if job creation failed
