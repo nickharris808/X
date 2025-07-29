@@ -1,6 +1,9 @@
 {
   "functions": {
     "app/api/start-analysis/route.ts": {
+      "maxDuration": 120
+    },
+    "app/api/upload-chunk/route.ts": {
       "maxDuration": 60
     }
   },
@@ -8,6 +11,15 @@
     {
       "src": "/api/start-analysis",
       "dest": "/api/start-analysis",
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization"
+      }
+    },
+    {
+      "src": "/api/upload-chunk",
+      "dest": "/api/upload-chunk",
       "headers": {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",

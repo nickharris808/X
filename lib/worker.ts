@@ -68,7 +68,7 @@ export async function runAnalysis(jobId: string) {
     if (job.mimeType === "text/plain") {
       // Text is already parsed on client side, just load it
       rawText = await fs.readFile(job.filePath, 'utf-8')
-      console.log(`[${job.id}] OCR text loaded successfully. Text length: ${rawText.length}`, rawText,"rawText============")
+      console.log(`[${job.id}] OCR text loaded successfully. Text length: ${rawText.length}`)
     } else {
       // For other files, we need to implement document parsing
       // For now, throw an error since parseDocument was removed

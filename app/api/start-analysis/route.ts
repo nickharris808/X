@@ -23,13 +23,17 @@ export async function POST(req: NextRequest) {
     const marketingOptIn = formData.get("marketingOptIn") === "true"
     const captchaToken = formData.get("captchaToken") as string | null
     const text = formData.get("text") as string | null
+    const totalChunks = parseInt(formData.get("totalChunks") as string || "1")
+    const chunkIndex = parseInt(formData.get("chunkIndex") as string || "0")
     
     console.log('Received form data:', {
       hasFile: !!file,
       email: email,
       hasCaptchaToken: !!captchaToken,
       hasText: !!text,
-      textLength: text?.length
+      textLength: text?.length,
+      totalChunks,
+      chunkIndex
     })
     
     if(!text){
@@ -42,11 +46,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Email and CAPTCHA token are required." }, { status: 400 })
     }
     
-    // Check text size (Vercel has 4.5MB payload limit)
-    const maxTextSize = 10 * 1024 * 1024 // 10MB limit
-    if (text && text.length > maxTextSize) {
+    // Check individual chunk size (keep under 4MB for Vercel)
+    const maxChunkSize = 4 * 1024 * 1024 // 4MB per chunk
+    if (text && text.length > maxChunkSize) {
       return NextResponse.json({ 
-        error: "Text content is too large. Please try with a smaller document or contact support." 
+        error: "Individual chunk is too large. Please try with a smaller document." 
       }, { status: 413 })
     }
 
@@ -86,14 +90,9 @@ export async function POST(req: NextRequest) {
     const fileName = `ocr-extracted-${jobId}.txt`
     const filePath = path.join(uploadsDir, fileName)
 console.log("filePath================",filePath)
-    // Truncate text if it's too large (Vercel has 4.5MB payload limit)
-    const maxTextLength = 100000 // ~100KB limit to be safe
-    const truncatedText = text && text.length > maxTextLength 
-      ? text.substring(0, maxTextLength) + '\n\n[Text truncated due to size limits]'
-      : text || 'dummy text'
-    
-    // Write the extracted text to a temporary file
-    await fs.writeFile(filePath, truncatedText, 'utf-8')
+    // Write the first chunk to a temporary file
+    const fileText = text || 'dummy text'
+    await fs.writeFile(filePath, fileText, 'utf-8')
 
     // Create job record
     const job: Job = {
@@ -123,11 +122,20 @@ console.log("filePath================",filePath)
       await createJob(job)
       console.log('Job created successfully:', jobId)
       
-      // Start the analysis in the background (do not await it)
-      runAnalysis(jobId)
-
-      // Immediately respond to the client
-      return NextResponse.json({ message: "Analysis started.", jobId }, { status: 202 })
+      // If this is a single chunk or the first chunk, start analysis immediately
+      if (totalChunks === 1) {
+        // Start the analysis in the background (do not await it)
+        runAnalysis(jobId)
+        return NextResponse.json({ message: "Analysis started.", jobId }, { status: 202 })
+      } else {
+        // For multiple chunks, wait for all chunks to be uploaded
+        return NextResponse.json({ 
+          message: "Job created. Uploading chunks...", 
+          jobId,
+          totalChunks,
+          chunkIndex: 0
+        }, { status: 202 })
+      }
     } catch (dbError) {
       console.error('Failed to create job in database:', dbError)
       // Clean up the file if job creation failed

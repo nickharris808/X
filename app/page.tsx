@@ -102,6 +102,20 @@ export default function InsightEngine() {
         throw new Error("CAPTCHA token is missing")
       }
       
+      // Split text into chunks if it's too large (4MB per chunk)
+      const chunkSize = 4 * 1024 * 1024 // 4MB chunks
+      const chunks = []
+      
+      if (text.length > chunkSize) {
+        for (let i = 0; i < text.length; i += chunkSize) {
+          chunks.push(text.slice(i, i + chunkSize))
+        }
+        console.log(`Text split into ${chunks.length} chunks`)
+      } else {
+        chunks.push(text)
+      }
+      
+      // Send first chunk to start the job
       const formData = new FormData()
       formData.append("file", file)
       formData.append("email", storedEmail)
@@ -109,7 +123,10 @@ export default function InsightEngine() {
         formData.append("captchaToken", storedCaptchaToken)
       }
       formData.append("marketingOptIn", "false")
-      formData.append("text", text)
+      formData.append("text", chunks[0])
+      formData.append("totalChunks", chunks.length.toString())
+      formData.append("chunkIndex", "0")
+      
       const res = await fetch("/api/start-analysis", {
         method: "POST",
         body: formData,
@@ -119,7 +136,25 @@ export default function InsightEngine() {
       if (!res.ok) {
         throw new Error(data.error || `Failed to start analysis (${res.status})`)
       }
+      
       setJobId(data.jobId)
+      
+      // Send remaining chunks if any
+      if (chunks.length > 1) {
+        for (let i = 1; i < chunks.length; i++) {
+          const chunkFormData = new FormData()
+          chunkFormData.append("jobId", data.jobId)
+          chunkFormData.append("text", chunks[i])
+          chunkFormData.append("chunkIndex", i.toString())
+          chunkFormData.append("totalChunks", chunks.length.toString())
+          
+          await fetch("/api/upload-chunk", {
+            method: "POST",
+            body: chunkFormData,
+          })
+        }
+      }
+      
       pollJobStatus(data.jobId)
     } catch (err: any) {
       setIsProcessing(false)
