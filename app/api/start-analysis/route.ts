@@ -18,115 +18,18 @@ export const config = {
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData()
-    const file = formData.get("file") as File | null
-    const email = formData.get("email") as string | null
-    const marketingOptIn = formData.get("marketingOptIn") === "true"
-    const captchaToken = formData.get("captchaToken") as string | null
-    const sessionId = formData.get("sessionId") as string | null
-    const combinedFilePath = formData.get("combinedFilePath") as string | null
+    const jobId = formData.get("jobId") as string | null
     
-    console.log('Received form data:', {
-      hasFile: !!file,
-      email: email,
-      hasCaptchaToken: !!captchaToken,
-      sessionId,
-      hasCombinedFilePath: !!combinedFilePath
-    })
+    if (!jobId) {
+      return NextResponse.json({ error: "Job ID is required." }, { status: 400 })
+    }
     
-    if (!file) {
-      return NextResponse.json({ error: "File is required." }, { status: 400 })
-    }
-    if (!email || !captchaToken) {
-      return NextResponse.json({ error: "Email and CAPTCHA token are required." }, { status: 400 })
-    }
-
-    // --- Google reCAPTCHA Verification ---
-    const isDev = process.env.NODE_ENV === 'development'
+    console.log('Starting analysis for job:', jobId)
     
-    if (!isDev) {
-      const recaptchaSecret = process.env.RECAPTCHA_SECRET_KEY
-      if (!recaptchaSecret) {
-        return NextResponse.json({ error: "reCAPTCHA secret key not configured." }, { status: 500 })
-      }
-      
-      console.log('Verifying CAPTCHA with token:', captchaToken?.substring(0, 20) + '...')
-      
-      const recaptchaRes = await fetch("https://www.google.com/recaptcha/api/siteverify", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `secret=${recaptchaSecret}&response=${captchaToken}`,
-      })
-      const recaptchaData = await recaptchaRes.json()
-      console.log('CAPTCHA verification result:', recaptchaData)
-      
-      if (!recaptchaData.success) {
-        return NextResponse.json({ error: "CAPTCHA verification failed." }, { status: 403 })
-      }
-    } else {
-      console.log('Development mode: Skipping CAPTCHA verification')
-    }
-
-    // Use OS temp directory for file storage (works in both local and production)
-    const os = await import('os')
-    const tempDir = os.tmpdir()
-    const uploadsDir = path.join(tempDir, "insight-engine-uploads")
-    await fs.mkdir(uploadsDir, { recursive: true })
-
-    const jobId = randomUUID()
-    let filePath: string
+    // Start the analysis in the background (do not await it)
+    runAnalysis(jobId)
     
-    if (combinedFilePath) {
-      // Use the combined file path from text upload
-      filePath = combinedFilePath
-      console.log("Using combined file path:", filePath)
-    } else {
-      // Create a new file path for single upload
-      const fileName = `ocr-extracted-${jobId}.txt`
-      filePath = path.join(uploadsDir, fileName)
-      console.log("Created new file path:", filePath)
-    }
-
-    // Create job record
-    const job: Job = {
-      id: jobId,
-      status: "pending",
-      filePath,
-      mimeType: "text/plain",
-      email,
-      marketingOptIn,
-      createdAt: new Date(),
-    }
-    // const fileBuffer = Buffer.from(await file.arrayBuffer())
-    // const jobId = randomUUID()
-    // const filePath = path.join(uploadsDir, `${jobId}-${file.name}`)
-    // await fs.writeFile(filePath, fileBuffer)
-
-    // const job: Job = {
-    //   id: jobId,
-    //   status: "pending",
-    //   filePath,
-    //   mimeType: file.type,
-    //   email,
-    //   marketingOptIn,
-    //   createdAt: new Date(),
-    // }
-    try {
-      await createJob(job)
-      console.log('Job created successfully:', jobId)
-      
-      // Start the analysis in the background (do not await it)
-      runAnalysis(jobId)
-      return NextResponse.json({ message: "Analysis started.", jobId }, { status: 202 })
-    } catch (dbError) {
-      console.error('Failed to create job in database:', dbError)
-      // Clean up the file if job creation failed
-      try {
-        await fs.unlink(filePath)
-      } catch (cleanupError) {
-        console.error('Failed to cleanup file:', cleanupError)
-      }
-      return NextResponse.json({ error: "Failed to create job. Please try again." }, { status: 500 })
-    }
+    return NextResponse.json({ message: "Analysis started.", jobId }, { status: 202 })
   } catch (error: any) {
     console.error("Failed to start analysis:", error)
     return NextResponse.json({ error: "Internal server error." }, { status: 500 })

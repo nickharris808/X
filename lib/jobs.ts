@@ -38,6 +38,7 @@ export interface Job {
   mimeType: string
   email: string
   marketingOptIn: boolean
+  textContent?: string
   deepResearchPrompt?: string
   finalReport?: any
   error?: string

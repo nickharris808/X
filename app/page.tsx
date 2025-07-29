@@ -143,59 +143,60 @@ export default function InsightEngine() {
         const chunkData = await chunkRes.json()
         console.log(`Chunk ${i + 1}/${chunks.length} uploaded`)
         
-        // If this is the last chunk and it's complete, start analysis
-        if (chunkData.isComplete) {
-          // Now start the analysis with the combined file
-          const analysisFormData = new FormData()
-          analysisFormData.append("file", file)
-          analysisFormData.append("email", storedEmail)
-          if (storedCaptchaToken) {
-            analysisFormData.append("captchaToken", storedCaptchaToken)
-          }
-          analysisFormData.append("marketingOptIn", "false")
-          analysisFormData.append("sessionId", sessionId)
-          analysisFormData.append("combinedFilePath", chunkData.combinedFilePath)
-          
-          const analysisRes = await fetch("/api/start-analysis", {
-            method: "POST",
-            body: analysisFormData,
-          })
-          
-          const analysisData = await analysisRes.json()
-          
-          if (!analysisRes.ok) {
-            throw new Error(analysisData.error || `Failed to start analysis (${analysisRes.status})`)
-          }
-          
-          setJobId(analysisData.jobId)
-          pollJobStatus(analysisData.jobId)
-          return
-        }
+                          // If this is the last chunk and it's complete, start analysis
+         if (chunkData.isComplete) {
+           // Job is already created, now start analysis
+           setJobId(chunkData.jobId)
+           
+           // Start the analysis
+           const startFormData = new FormData()
+           startFormData.append("jobId", chunkData.jobId)
+           
+           await fetch("/api/start-analysis", {
+             method: "POST",
+             body: startFormData,
+           })
+           
+           pollJobStatus(chunkData.jobId)
+           return
+         }
       }
       
-      // If we get here, it means single chunk upload
-      const analysisFormData = new FormData()
-      analysisFormData.append("file", file)
-      analysisFormData.append("email", storedEmail)
-      if (storedCaptchaToken) {
-        analysisFormData.append("captchaToken", storedCaptchaToken)
-      }
-      analysisFormData.append("marketingOptIn", "false")
-      analysisFormData.append("sessionId", sessionId)
-      
-      const analysisRes = await fetch("/api/start-analysis", {
-        method: "POST",
-        body: analysisFormData,
-      })
-      
-      const analysisData = await analysisRes.json()
-      
-      if (!analysisRes.ok) {
-        throw new Error(analysisData.error || `Failed to start analysis (${analysisRes.status})`)
-      }
-      
-      setJobId(analysisData.jobId)
-      pollJobStatus(analysisData.jobId)
+                    // If we get here, it means single chunk upload - create job directly
+       const jobFormData = new FormData()
+       jobFormData.append("text", text)
+       jobFormData.append("email", storedEmail)
+       if (storedCaptchaToken) {
+         jobFormData.append("captchaToken", storedCaptchaToken)
+       }
+       jobFormData.append("marketingOptIn", "false")
+       jobFormData.append("chunkIndex", "0")
+       jobFormData.append("totalChunks", "1")
+       jobFormData.append("sessionId", sessionId)
+       
+       const jobRes = await fetch("/api/upload-text", {
+         method: "POST",
+         body: jobFormData,
+       })
+       
+       const jobData = await jobRes.json()
+       
+       if (!jobRes.ok) {
+         throw new Error(jobData.error || `Failed to create job (${jobRes.status})`)
+       }
+       
+       setJobId(jobData.jobId)
+       
+       // Start the analysis
+       const startFormData = new FormData()
+       startFormData.append("jobId", jobData.jobId)
+       
+       await fetch("/api/start-analysis", {
+         method: "POST",
+         body: startFormData,
+       })
+       
+       pollJobStatus(jobData.jobId)
       
     } catch (err: any) {
       setIsProcessing(false)

@@ -64,11 +64,17 @@ export async function runAnalysis(jobId: string) {
   try {
     let rawText: string;
     
-    // If it's a text file (OCR processed), read the text directly
+    // If it's a text file (OCR processed), use text content from database
     if (job.mimeType === "text/plain") {
-      // Text is already parsed on client side, just load it
-      rawText = await fs.readFile(job.filePath, 'utf-8')
-      console.log(`[${job.id}] OCR text loaded successfully. Text length: ${rawText.length}`)
+      if (job.textContent) {
+        // Use text content stored in database
+        rawText = job.textContent
+        console.log(`[${job.id}] Text content loaded from database. Text length: ${rawText.length}`)
+      } else {
+        // Fallback to file reading for backward compatibility
+        rawText = await fs.readFile(job.filePath, 'utf-8')
+        console.log(`[${job.id}] Text loaded from file. Text length: ${rawText.length}`)
+      }
     } else {
       // For other files, we need to implement document parsing
       // For now, throw an error since parseDocument was removed

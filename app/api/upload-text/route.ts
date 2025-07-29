@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import fs from "fs/promises"
 import path from "path"
 import { randomUUID } from "crypto"
+import { createJob, getJob, updateJob } from "@/lib/jobs"
 
 export async function POST(req: NextRequest) {
   try {
@@ -30,9 +31,8 @@ export async function POST(req: NextRequest) {
 
     console.log(`Text chunk ${chunkIndex + 1}/${totalChunks} saved for session ${sessionId}`)
 
-    // If this is the last chunk, combine all chunks
+    // If this is the last chunk, combine all chunks and create job
     if (chunkIndex === totalChunks - 1) {
-      const combinedFilePath = path.join(uploadsDir, `combined-${sessionId}.txt`)
       let combinedText = ""
       
       for (let i = 0; i < totalChunks; i++) {
@@ -44,14 +44,29 @@ export async function POST(req: NextRequest) {
         await fs.unlink(chunkPath)
       }
       
-      await fs.writeFile(combinedFilePath, combinedText, 'utf-8')
-      console.log(`All chunks combined for session ${sessionId}`)
+      console.log(`All chunks combined for session ${sessionId}, text length: ${combinedText.length}`)
+      
+      // Create job with combined text
+      const jobId = randomUUID()
+      const job = {
+        id: jobId,
+        status: "pending" as const,
+        filePath: `session-${sessionId}`, // Virtual path for reference
+        mimeType: "text/plain",
+        email,
+        marketingOptIn,
+        textContent: combinedText,
+        createdAt: new Date(),
+      }
+      
+      await createJob(job)
+      console.log(`Job created with combined text: ${jobId}`)
       
       return NextResponse.json({ 
         success: true, 
         sessionId,
-        isComplete: true,
-        combinedFilePath
+        jobId,
+        isComplete: true
       })
     }
 
