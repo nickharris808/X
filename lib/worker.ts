@@ -55,20 +55,29 @@ const openai = new OpenAI({
 
 
 export async function runAnalysis(jobId: string) {
+  console.log(`[${jobId}] ====== RUN ANALYSIS FUNCTION CALLED ======`)
   console.log(`[${jobId}] runAnalysis function called`)
   
+  let job;
   try {
-    const job = await getJob(jobId)
-    if (!job) {
-      console.error(`Job ${jobId} not found.`)
-      return
-    }
+    console.log(`[${jobId}] Getting job from database...`)
+    try {
+      job = await getJob(jobId)
+      if (!job) {
+        console.error(`Job ${jobId} not found.`)
+        return
+      }
 
-    console.log(`[${jobId}] Job found, current status: ${job.status}`)
-    
-    // Update status to parsing at the start
-    await updateJob(jobId, { status: "parsing" })
-    console.log(`[${jobId}] Starting analysis - status updated to parsing`)
+      console.log(`[${jobId}] Job found, current status: ${job.status}`)
+      
+      // Update status to parsing at the start
+      console.log(`[${jobId}] Updating status to parsing...`)
+      await updateJob(jobId, { status: "parsing" })
+      console.log(`[${jobId}] Starting analysis - status updated to parsing`)
+    } catch (dbError) {
+      console.error(`[${jobId}] Database operation failed:`, dbError)
+      throw dbError
+    }
     
     let rawText: string;
     
