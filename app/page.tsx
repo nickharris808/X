@@ -318,10 +318,8 @@ export default function InsightEngine() {
         sessionStorage.removeItem('analysisFile')
       }
     }
-    
-    console.log(`🔄 Starting polling for job: ${jobId}`)
-    poll() // Poll immediately
-    pollingRef.current = setInterval(poll, 1000) // Poll every 1 second for better UX
+    poll()
+    pollingRef.current = setInterval(poll, 2000) // Poll every 2 seconds for better UX
   }
 
   const handleScrollToUpload = () => {
@@ -720,7 +718,10 @@ function ProcessingPage({
   )
   
   // Determine current step - if jobStatus is null, we're in parsing phase
-  const currentStep = jobStatus ? uniqueSteps.findIndex(s => s.key === jobStatus) : 0
+  const currentStep = jobStatus ? statusSteps.findIndex(s => s.key === jobStatus) : 0
+  
+  // Debug logging
+  console.log('ProcessingPage Debug:', { jobStatus, currentStep, statusSteps: statusSteps.map(s => s.key) })
   
   // Check if analysis is complete
   const isComplete = jobStatus === 'complete' || jobStatus === 'completed'
