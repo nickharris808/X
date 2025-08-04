@@ -27,7 +27,10 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // job.status = "synthesizing"
+    // Update status to synthesizing when webhook is received
+    await updateJob(jobId, { status: "synthesizing" })
+    console.log(`[${jobId}] Webhook received - status updated to synthesizing`)
+    
     const body = await req.json()
 
     const researchContent = body.content[0]

@@ -55,24 +55,32 @@ const openai = new OpenAI({
 
 
 export async function runAnalysis(jobId: string) {
-  const job = await getJob(jobId)
-  if (!job) {
-    console.error(`Job ${jobId} not found.`)
-    return
-  }
-
+  console.log(`[${jobId}] runAnalysis function called`)
+  
   try {
+    const job = await getJob(jobId)
+    if (!job) {
+      console.error(`Job ${jobId} not found.`)
+      return
+    }
+
+    console.log(`[${jobId}] Job found, current status: ${job.status}`)
+    
+    // Update status to parsing at the start
+    await updateJob(jobId, { status: "parsing" })
+    console.log(`[${jobId}] Starting analysis - status updated to parsing`)
+    
     let rawText: string;
     
     // Check if we have text content in database (OCR processed text)
     if (job.textContent) {
       // Use text content stored in database
       rawText = job.textContent
-      console.log(`[${job.id}] Text content loaded from database. Text length: ${rawText.length}`)
+      console.log(`[${jobId}] Text content loaded from database. Text length: ${rawText.length}`)
     } else if (job.mimeType === "text/plain") {
       // Fallback to file reading for backward compatibility
       rawText = await fs.readFile(job.filePath, 'utf-8')
-      console.log(`[${job.id}] Text loaded from file. Text length: ${rawText.length}`)
+      console.log(`[${jobId}] Text loaded from file. Text length: ${rawText.length}`)
     } else {
       // For other files, we need to implement document parsing
       // For now, throw an error since parseDocument was removed
@@ -93,7 +101,7 @@ GUIDELINES:
 4.  **Emphasize Source Quality:** "Prioritize primary sources: official company press releases, regulatory filings, academic journals, and reports from reputable market research firms. Avoid unverified blogs or press release aggregators. All claims must be supported by inline citations."
 5.  **Final Output:** Return ONLY the generated prompt for the research AI. Do not conduct the research yourself.`
 
-    console.log(`[${job.id}] [GPT-4.1] Sending prompt for research plan generation:`)
+    console.log(`[${jobId}] [GPT-4.1] Sending prompt for research plan generation:`)
     console.log(promptGenerationInstructions , "promptGenerationInstructions")
     console.log('User content:', `Generate a research prompt based on this text:\n\n---\n\n${rawText.substring(0, 12000)}`)
 
@@ -110,14 +118,14 @@ GUIDELINES:
     })
     const deepResearchPrompt = promptResponse.choices[0].message.content ?? ""
     await updateJob(jobId, { deepResearchPrompt })
-    console.log(`[${job.id}] [GPT-4.1] Response for research plan:`)
+    console.log(`[${jobId}] [GPT-4.1] Response for research plan:`)
     console.log(promptResponse.choices[0].message.content)
-    console.log(`[${job.id}] Deep research prompt generated.`)
+    console.log(`[${jobId}] Deep research prompt generated.`)
 
     // --- Step 4: Executing Deep Research ---
     await updateJob(jobId, { status: "researching" })
-    console.log(`[${job.id}] [O4 Mini] Sending research plan to deep research model:`)
-    console.log(job.deepResearchPrompt,"job.deepResearchPrompt================")
+    console.log(`[${jobId}] [O4 Mini] Sending research plan to deep research model:`)
+    console.log(deepResearchPrompt,"deepResearchPrompt================")
 
     // Simulating the async call with a webhook.
     const deepResearchResponse = await openai.chat.completions.create({
@@ -155,7 +163,8 @@ GUIDELINES:
     console.error(`[${jobId}] Analysis failed:`, error)
     await updateJob(jobId, { status: "error", error: error.message })
     // await sendErrorEmail(job.email, jobId, error.message)
-    await cleanupFile(job.filePath)
+    // Note: We can't access job.filePath here since job might be null
+    // The cleanup will be handled by the webhook or other cleanup functions
   }
 }
 
