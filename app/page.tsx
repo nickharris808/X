@@ -42,6 +42,16 @@ export default function InsightEngine() {
       }
     }
   }, [])
+  
+  // Debug jobStatus changes
+  useEffect(() => {
+    console.log('🔄 jobStatus changed to:', jobStatus)
+  }, [jobStatus])
+  
+  // Debug isProcessing changes
+  useEffect(() => {
+    console.log('🔄 isProcessing changed to:', isProcessing)
+  }, [isProcessing])
 
   const handleFileChange = (selectedFile: File | null) => {
     if (selectedFile) {
@@ -241,13 +251,22 @@ export default function InsightEngine() {
 
 
 
-  const pollJobStatus = (jobId: string) => {
+    const pollJobStatus = (jobId: string) => {
+    console.log(`🔄 Starting polling for job: ${jobId}`)
     if (pollingRef.current) clearInterval(pollingRef.current)
+    
     const poll = async () => {
       try {
+        console.log(`📡 Polling job: ${jobId}`)
         const res = await fetch(`/api/jobs/${jobId}`)
         const data = await res.json()
         console.log('📊 Job Status Update:', { jobId, status: data.status, hasFinalReport: !!data.finalReport })
+        
+        // Add more detailed logging
+        if (data.status !== jobStatus) {
+          console.log('🔄 Status changed from', jobStatus, 'to', data.status)
+        }
+        
         setJobStatus(data.status)
         setJobError(data.error)
         if ((data.status === "completed" || data.status === "complete") && data.finalReport) {
@@ -275,12 +294,15 @@ export default function InsightEngine() {
             window.location.href = reportUrl
           }, 1000) // 1 second delay to show completion
         } else if (data.status === "error") {
+          console.log('❌ Analysis failed with error status')
           setIsProcessing(false)
           clearInterval(pollingRef.current as NodeJS.Timeout)
           // Clean up sessionStorage
           sessionStorage.removeItem('analysisEmail')
           sessionStorage.removeItem('analysisCaptchaToken')
           sessionStorage.removeItem('analysisFile')
+        } else {
+          console.log(`📊 Current status: ${data.status}, waiting for completion...`)
         }
       } catch (err: any) {
         setJobError("Failed to fetch job status")
@@ -292,8 +314,14 @@ export default function InsightEngine() {
         sessionStorage.removeItem('analysisFile')
       }
     }
+    console.log(`🔄 Starting polling interval for job: ${jobId}`)
+    // Poll immediately to catch initial status
     poll()
-    pollingRef.current = setInterval(poll, 1000) // Poll every 1 second for better UX
+    // Then poll every 200ms
+    pollingRef.current = setInterval(() => {
+      console.log(`⏰ Polling interval triggered for job: ${jobId}`)
+      poll()
+    }, 200) // Poll every 200ms for better UX
   }
 
   const handleScrollToUpload = () => {
@@ -686,14 +714,26 @@ function ProcessingPage({
     { name: "Complete", key: "completed" },
   ]
   
-  // Determine current step - if jobStatus is null, we're in parsing phase
-  const currentStep = jobStatus ? statusSteps.findIndex(s => s.key === jobStatus) : 0
+  // Remove duplicates and get unique steps
+  const uniqueSteps = statusSteps.filter((step, index, self) => 
+    index === self.findIndex(s => s.key === step.key)
+  )
   
-  // Debug logging
-  console.log('ProcessingPage Debug:', { jobStatus, currentStep, statusSteps: statusSteps.map(s => s.key) })
+  // Determine current step - if jobStatus is null, we're in parsing phase
+  const currentStep = jobStatus ? uniqueSteps.findIndex(s => s.key === jobStatus) : 0
   
   // Check if analysis is complete
   const isComplete = jobStatus === 'complete' || jobStatus === 'completed'
+  
+  // Debug logging
+  console.log('ProcessingPage Debug:', { 
+    timestamp: new Date().toISOString(),
+    jobStatus, 
+    currentStep, 
+    uniqueSteps: uniqueSteps.map(s => s.key),
+    isComplete,
+    uniqueStepsLength: uniqueSteps.length
+  })
 
   return (
     <div className="bg-[#F4F4F4] min-h-screen flex flex-col items-center justify-center text-center p-6">
@@ -711,7 +751,7 @@ function ProcessingPage({
           </p>
         )}
         <div className="mt-8 space-y-4 text-left">
-          {statusSteps.slice(0, -1).map((item, index) => (
+          {uniqueSteps.slice(0, -1).map((item, index) => (
             <motion.div
               key={item.name}
               initial={{ opacity: 0, x: -20 }}
