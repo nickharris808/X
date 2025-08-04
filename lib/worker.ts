@@ -70,10 +70,13 @@ export async function runAnalysis(jobId: string) {
 
       console.log(`[${jobId}] Job found, current status: ${job.status}`)
       
-      // Update status to parsing at the start
-      console.log(`[${jobId}] Updating status to parsing...`)
-      await updateJob(jobId, { status: "parsing" })
-      console.log(`[${jobId}] Starting analysis - status updated to parsing`)
+          // Update status to parsing at the start
+    console.log(`[${jobId}] Updating status to parsing...`)
+    await updateJob(jobId, { status: "parsing" })
+    console.log(`[${jobId}] Starting analysis - status updated to parsing`)
+    
+    // Add a small delay to make the parsing step visible
+    await new Promise(resolve => setTimeout(resolve, 2000))
     } catch (dbError) {
       console.error(`[${jobId}] Database operation failed:`, dbError)
       throw dbError
@@ -98,6 +101,11 @@ export async function runAnalysis(jobId: string) {
 
     // --- Step 3: Intelligent Prompt Generation ---
     await updateJob(jobId, { status: "prompting" })
+    console.log(`[${jobId}] Status updated to prompting`)
+    
+    // Add a small delay to make the prompting step visible
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    
     const promptGenerationInstructions = `You are an expert VC analyst. Your task is to create a detailed, structured research prompt for another AI model based on the provided text from a startup's pitch deck or business plan. The goal is to uncover the information needed for a comprehensive due diligence report.
 GUIDELINES:
 1.  **Identify Core Entities:** From the text, extract the company name, key products/services, target market, and core technology claims.
@@ -133,6 +141,11 @@ GUIDELINES:
 
     // --- Step 4: Executing Deep Research ---
     await updateJob(jobId, { status: "researching" })
+    console.log(`[${jobId}] Status updated to researching`)
+    
+    // Add a small delay to make the researching step visible
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    
     console.log(`[${jobId}] [O4 Mini] Sending research plan to deep research model:`)
     console.log(deepResearchPrompt,"deepResearchPrompt================")
 

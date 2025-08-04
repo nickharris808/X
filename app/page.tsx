@@ -293,7 +293,7 @@ export default function InsightEngine() {
       }
     }
     poll()
-    pollingRef.current = setInterval(poll, 2000) // Poll every 2 seconds for better UX
+    pollingRef.current = setInterval(poll, 1000) // Poll every 1 second for better UX
   }
 
   const handleScrollToUpload = () => {
