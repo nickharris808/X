@@ -293,7 +293,7 @@ export default function InsightEngine() {
       }
     }
     poll()
-    pollingRef.current = setInterval(poll, 5000)
+    pollingRef.current = setInterval(poll, 2000) // Poll every 2 seconds for better UX
   }
 
   const handleScrollToUpload = () => {
@@ -677,6 +677,7 @@ function ProcessingPage({
   jobId?: string | null
 }) {
   const statusSteps = [
+    { name: "Starting Analysis", key: "pending" },
     { name: "Parsing Document", key: "parsing" },
     { name: "Generating Research Plan", key: "prompting" },
     { name: "Conducting Deep Research", key: "researching" },
@@ -687,6 +688,9 @@ function ProcessingPage({
   
   // Determine current step - if jobStatus is null, we're in parsing phase
   const currentStep = jobStatus ? statusSteps.findIndex(s => s.key === jobStatus) : 0
+  
+  // Debug logging
+  console.log('ProcessingPage Debug:', { jobStatus, currentStep, statusSteps: statusSteps.map(s => s.key) })
   
   // Check if analysis is complete
   const isComplete = jobStatus === 'complete' || jobStatus === 'completed'
@@ -701,6 +705,11 @@ function ProcessingPage({
       >
         <LoaderIcon className="h-16 w-16 text-gray-400 mx-auto animate-pulse" />
         <h2 className="mt-8 text-3xl font-bold text-[#1D1D1D]">Analyzing Your Document...</h2>
+        {jobStatus && (
+          <p className="mt-2 text-sm text-gray-600">
+            Current Status: <span className="font-semibold">{jobStatus}</span>
+          </p>
+        )}
         <div className="mt-8 space-y-4 text-left">
           {statusSteps.slice(0, -1).map((item, index) => (
             <motion.div
@@ -710,7 +719,7 @@ function ProcessingPage({
               transition={{ delay: index * 0.2 }}
               className="flex items-center space-x-4"
             >
-              <div>{
+              <div className="transition-all duration-300">{
                 currentStep > index ? <CheckIcon className="h-6 w-6 text-brand-green" /> :
                 currentStep === index ? <LoaderIcon className="h-6 w-6 text-gray-500 animate-spin" /> :
                 <div className="h-6 w-6 rounded-full bg-gray-300" />
