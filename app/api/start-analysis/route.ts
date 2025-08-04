@@ -27,7 +27,12 @@ export async function POST(req: NextRequest) {
     console.log('Starting analysis for job:', jobId)
     
     // Start the analysis in the background (do not await it)
-    runAnalysis(jobId)
+    // Add error handling to catch any issues
+    runAnalysis(jobId).catch(error => {
+      console.error(`[${jobId}] runAnalysis failed:`, error)
+    })
+    
+    console.log(`[${jobId}] runAnalysis called successfully`)
     
     return NextResponse.json({ message: "Analysis started.", jobId }, { status: 202 })
   } catch (error: any) {

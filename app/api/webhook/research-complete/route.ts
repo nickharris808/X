@@ -92,8 +92,8 @@ GUIDELINES:
     const combinedInput = `**researchReportText:**\n---\n${reportTextWithMarkers}\n---\n**sourcesList:**\n---\n${JSON.stringify(sourcesList, null, 2)}\n---`
 
     const finalReportResponse = await openai.chat.completions.create({
-      // CORRECTED: Model name now matches the specification exactly.
-      model: "gpt-4.1",
+      // Use a valid model name
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: finalReportInstructions },
         { role: "user", content: combinedInput },

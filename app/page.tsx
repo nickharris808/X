@@ -158,11 +158,18 @@ export default function InsightEngine() {
       const startFormData = new FormData()
       startFormData.append("jobId", jobData.jobId)
       
-      await fetch("/api/start-analysis", {
+      console.log(`[${jobData.jobId}] Calling start-analysis endpoint...`)
+      const startRes = await fetch("/api/start-analysis", {
         method: "POST",
         body: startFormData,
       })
       
+      if (!startRes.ok) {
+        const startError = await startRes.json()
+        throw new Error(`Failed to start analysis: ${startError.error || startRes.status}`)
+      }
+      
+      console.log(`[${jobData.jobId}] Analysis started successfully`)
       pollJobStatus(jobData.jobId)
       
     } catch (err: any) {
@@ -193,7 +200,7 @@ export default function InsightEngine() {
     setOcrText(currentText)
     setIsOcrProcessing(false)
     setOcrProgress(null)
-    setJobStatus("prompting")
+    // Don't set jobStatus here - let it be set by the actual job status updates
     
     if(currentText && currentText.length > 0){
       console.log('Calling checkOcrComplete from handleOcrProcessingComplete')

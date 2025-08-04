@@ -106,8 +106,8 @@ GUIDELINES:
     console.log('User content:', `Generate a research prompt based on this text:\n\n---\n\n${rawText.substring(0, 12000)}`)
 
     const promptResponse = await openai.chat.completions.create({
-      // CORRECTED: Model name now matches the specification exactly.
-      model: "gpt-4.1",
+      // Use a valid model name
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: promptGenerationInstructions },
         {
@@ -146,7 +146,7 @@ GUIDELINES:
     // Simulate the webhook call
     const baseUrl = process.env.BASE_URL || "http://localhost:3000";
     const webhookUrl = `${baseUrl}/api/webhook/research-complete?jobId=${jobId}`;
-    console.log(`[${job.id}] Deep research finished. Calling webhook: ${webhookUrl}`);
+    console.log(`[${jobId}] Deep research finished. Calling webhook: ${webhookUrl}`);
     await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
