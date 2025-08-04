@@ -677,7 +677,6 @@ function ProcessingPage({
   jobId?: string | null
 }) {
   const statusSteps = [
-    { name: "Parsing Document", key: "pending" },
     { name: "Parsing Document", key: "parsing" },
     { name: "Generating Research Plan", key: "prompting" },
     { name: "Conducting Deep Research", key: "researching" },
