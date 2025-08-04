@@ -95,7 +95,7 @@ export default function InsightEngine() {
     
     try {
       // Create a unique identifier for this text to prevent duplicates
-      const textHash = btoa(text.substring(0, 100)).replace(/[^a-zA-Z0-9]/g, '')
+      const textHash = unicodeToBase64(text.substring(0, 100)).replace(/[^a-zA-Z0-9]/g, '')
       
       // Prevent multiple calls
       if (isProcessing || isJobCreating || hasStartedJob || processingJobId === textHash) {
@@ -172,13 +172,18 @@ export default function InsightEngine() {
       setIsJobCreating(false)
     }
   }
+  // Unicode-safe base64 encoding function
+  const unicodeToBase64 = (str: string) => {
+    return btoa(unescape(encodeURIComponent(str)))
+  }
+
   const handleOcrProcessingComplete = async (text?: string) => {
     console.log('handleOcrProcessingComplete called with text length:', text?.length || ocrText?.length)
     
     // Check if we've already processed this text
     const processedTextHash = sessionStorage.getItem('processedTextHash')
     const currentText = text || ocrText
-    const textHash = currentText ? btoa(currentText.substring(0, 100)).replace(/[^a-zA-Z0-9]/g, '') : ''
+    const textHash = currentText ? unicodeToBase64(currentText.substring(0, 100)).replace(/[^a-zA-Z0-9]/g, '') : ''
     
     if (processedTextHash === textHash) {
       console.log('Text already processed, skipping duplicate call')
