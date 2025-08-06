@@ -42,16 +42,6 @@ export default function InsightEngine() {
       }
     }
   }, [])
-  
-  // Debug jobStatus changes
-  useEffect(() => {
-    console.log('🔄 jobStatus changed to:', jobStatus)
-  }, [jobStatus])
-  
-  // Debug isProcessing changes
-  useEffect(() => {
-    console.log('🔄 isProcessing changed to:', isProcessing)
-  }, [isProcessing])
 
   const handleFileChange = (selectedFile: File | null) => {
     if (selectedFile) {
@@ -96,7 +86,11 @@ export default function InsightEngine() {
     setOcrText(null)
   }
 
-
+  const handleOcrTextExtracted = (text: string) => {
+    console.log('handleOcrTextExtracted called with text length:', text.length)
+    setOcrText(text)
+    // Don't call handleOcrProcessingComplete here - let it be called only once
+  }
     const checkOcrComplete = async (text: string) => {
     
     try {
@@ -247,31 +241,15 @@ export default function InsightEngine() {
 
 
 
-    const pollJobStatus = (jobId: string) => {
+  const pollJobStatus = (jobId: string) => {
     if (pollingRef.current) clearInterval(pollingRef.current)
-    
-    let lastStatus: string | null = null
-    let stuckCounter = 0
-    
     const poll = async () => {
       try {
         const res = await fetch(`/api/jobs/${jobId}`)
         const data = await res.json()
         console.log('📊 Job Status Update:', { jobId, status: data.status, hasFinalReport: !!data.finalReport })
-        
-        // Check if status changed
-        if (data.status !== lastStatus) {
-          console.log('🔄 Status changed from', lastStatus, 'to', data.status)
-          lastStatus = data.status
-          stuckCounter = 0
-        } else if (data.status === 'pending') {
-          stuckCounter++
-          console.log(`⚠️ Status stuck at ${data.status} for ${stuckCounter} polls`)
-        }
-        
         setJobStatus(data.status)
         setJobError(data.error)
-        
         if ((data.status === "completed" || data.status === "complete") && data.finalReport) {
           console.log('🎉 Analysis Complete! Redirecting to report...')
           setFinalReport(data.finalReport)
@@ -297,18 +275,14 @@ export default function InsightEngine() {
             window.location.href = reportUrl
           }, 1000) // 1 second delay to show completion
         } else if (data.status === "error") {
-          console.log('❌ Analysis failed with error status')
           setIsProcessing(false)
           clearInterval(pollingRef.current as NodeJS.Timeout)
           // Clean up sessionStorage
           sessionStorage.removeItem('analysisEmail')
           sessionStorage.removeItem('analysisCaptchaToken')
           sessionStorage.removeItem('analysisFile')
-        } else {
-          console.log(`📊 Current status: ${data.status}, waiting for completion...`)
         }
       } catch (err: any) {
-        console.error('❌ Polling error:', err)
         setJobError("Failed to fetch job status")
         setIsProcessing(false)
         clearInterval(pollingRef.current as NodeJS.Timeout)
@@ -712,11 +686,6 @@ function ProcessingPage({
     { name: "Complete", key: "completed" },
   ]
   
-  // Remove duplicates and get unique steps
-  const uniqueSteps = statusSteps.filter((step, index, self) => 
-    index === self.findIndex(s => s.key === step.key)
-  )
-  
   // Determine current step - if jobStatus is null, we're in parsing phase
   const currentStep = jobStatus ? statusSteps.findIndex(s => s.key === jobStatus) : 0
   
@@ -725,16 +694,6 @@ function ProcessingPage({
   
   // Check if analysis is complete
   const isComplete = jobStatus === 'complete' || jobStatus === 'completed'
-  
-  // Debug logging
-  console.log('ProcessingPage Debug:', { 
-    timestamp: new Date().toISOString(),
-    jobStatus, 
-    currentStep, 
-    uniqueSteps: uniqueSteps.map(s => s.key),
-    isComplete,
-    uniqueStepsLength: uniqueSteps.length
-  })
 
   return (
     <div className="bg-[#F4F4F4] min-h-screen flex flex-col items-center justify-center text-center p-6">
@@ -752,7 +711,7 @@ function ProcessingPage({
           </p>
         )}
         <div className="mt-8 space-y-4 text-left">
-          {uniqueSteps.slice(0, -1).map((item, index) => (
+          {statusSteps.slice(0, -1).map((item, index) => (
             <motion.div
               key={item.name}
               initial={{ opacity: 0, x: -20 }}
