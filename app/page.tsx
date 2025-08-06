@@ -248,23 +248,30 @@ export default function InsightEngine() {
 
 
     const pollJobStatus = (jobId: string) => {
-    console.log(`🔄 Starting polling for job: ${jobId}`)
     if (pollingRef.current) clearInterval(pollingRef.current)
+    
+    let lastStatus: string | null = null
+    let stuckCounter = 0
     
     const poll = async () => {
       try {
-        console.log(`📡 Polling job: ${jobId}`)
         const res = await fetch(`/api/jobs/${jobId}`)
         const data = await res.json()
         console.log('📊 Job Status Update:', { jobId, status: data.status, hasFinalReport: !!data.finalReport })
         
-        // Add more detailed logging
-        if (data.status !== jobStatus) {
-          console.log('🔄 Status changed from', jobStatus, 'to', data.status)
+        // Check if status changed
+        if (data.status !== lastStatus) {
+          console.log('🔄 Status changed from', lastStatus, 'to', data.status)
+          lastStatus = data.status
+          stuckCounter = 0
+        } else if (data.status === 'pending') {
+          stuckCounter++
+          console.log(`⚠️ Status stuck at ${data.status} for ${stuckCounter} polls`)
         }
         
         setJobStatus(data.status)
         setJobError(data.error)
+        
         if ((data.status === "completed" || data.status === "complete") && data.finalReport) {
           console.log('🎉 Analysis Complete! Redirecting to report...')
           setFinalReport(data.finalReport)
@@ -301,6 +308,7 @@ export default function InsightEngine() {
           console.log(`📊 Current status: ${data.status}, waiting for completion...`)
         }
       } catch (err: any) {
+        console.error('❌ Polling error:', err)
         setJobError("Failed to fetch job status")
         setIsProcessing(false)
         clearInterval(pollingRef.current as NodeJS.Timeout)
@@ -310,14 +318,10 @@ export default function InsightEngine() {
         sessionStorage.removeItem('analysisFile')
       }
     }
-    console.log(`🔄 Starting polling interval for job: ${jobId}`)
-    // Poll immediately to catch initial status
-    poll()
-    // Then poll every 200ms
-    pollingRef.current = setInterval(() => {
-      console.log(`⏰ Polling interval triggered for job: ${jobId}`)
-      poll()
-    }, 200) // Poll every 200ms for better UX
+    
+    console.log(`🔄 Starting polling for job: ${jobId}`)
+    poll() // Poll immediately
+    pollingRef.current = setInterval(poll, 1000) // Poll every 1 second for better UX
   }
 
   const handleScrollToUpload = () => {
