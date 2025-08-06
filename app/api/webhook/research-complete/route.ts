@@ -106,7 +106,7 @@ GUIDELINES:
     await updateJob(jobId, { status: "complete", finalReport: finalReportJson })
     console.log(`[${jobId}] Final report synthesized and saved.`)
 
-    await sendCompletionEmail(job.email, jobId)
+    // await sendCompletionEmail(job.email, jobId)
     await cleanupFile(job.filePath)
     
     // Also clean up any old files in the uploads directory
@@ -116,7 +116,7 @@ GUIDELINES:
   } catch (error: any) {
     console.error(`[${jobId}] Final synthesis failed:`, error)
     await updateJob(jobId, { status: "error", error: "Failed to structure final report." })
-    await sendErrorEmail(job.email, jobId, "Failed to structure final report.")
+    // await sendErrorEmail(job.email, jobId, "Failed to structure final report.")
     await cleanupFile(job?.filePath)
     return NextResponse.json({ error: "Failed to process report." }, { status: 500 })
   }
