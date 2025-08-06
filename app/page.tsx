@@ -96,11 +96,7 @@ export default function InsightEngine() {
     setOcrText(null)
   }
 
-  const handleOcrTextExtracted = (text: string) => {
-    console.log('handleOcrTextExtracted called with text length:', text.length)
-    setOcrText(text)
-    // Don't call handleOcrProcessingComplete here - let it be called only once
-  }
+
     const checkOcrComplete = async (text: string) => {
     
     try {

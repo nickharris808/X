@@ -183,8 +183,10 @@ GUIDELINES:
     })
   } catch (error: any) {
     console.error(`[${jobId}] Analysis failed:`, error)
-    await updateJob(jobId, { status: "error", error: error.message })
-    // await sendErrorEmail(job.email, jobId, error.message)
+    if (job) {
+      await updateJob(jobId, { status: "error", error: error.message })
+      await sendErrorEmail(job.email, jobId, error.message)
+    }
     // Note: We can't access job.filePath here since job might be null
     // The cleanup will be handled by the webhook or other cleanup functions
   }
