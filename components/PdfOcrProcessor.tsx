@@ -50,9 +50,7 @@ const PdfOcrProcessor: React.FC<PdfOcrProcessorProps> = ({ file, onTextExtracted
             await page.render({ canvasContext: context, viewport }).promise;
             const dataUrl = canvas.toDataURL('image/png');
 
-            const { data: { text } } = await Tesseract.recognize(dataUrl, 'eng', {
-              logger: m => console.log(`Page ${pageNum} OCR progress:`, m),
-            });
+            const { data: { text } } = await Tesseract.recognize(dataUrl, 'eng');
 
             return { pageNum, text: text?.trim() || '' };
           };

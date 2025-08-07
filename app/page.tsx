@@ -86,11 +86,6 @@ export default function InsightEngine() {
     setOcrText(null)
   }
 
-  const handleOcrTextExtracted = (text: string) => {
-    console.log('handleOcrTextExtracted called with text length:', text.length)
-    setOcrText(text)
-    // Don't call handleOcrProcessingComplete here - let it be called only once
-  }
     const checkOcrComplete = async (text: string) => {
     
     try {
@@ -99,7 +94,6 @@ export default function InsightEngine() {
       
       // Prevent multiple calls
       if (isProcessing || isJobCreating || hasStartedJob || processingJobId === textHash) {
-        console.log('Already processing, creating job, job already started, or processing same text, skipping duplicate call')
         console.log('isProcessing:', isProcessing, 'isJobCreating:', isJobCreating, 'hasStartedJob:', hasStartedJob, 'processingJobId:', processingJobId, 'textHash:', textHash)
         return
       }
@@ -140,7 +134,6 @@ export default function InsightEngine() {
       })
       
       const jobData = await jobRes.json()
-      
       if (!jobRes.ok) {
         throw new Error(jobData.error || `Failed to create job (${jobRes.status})`)
       }
@@ -148,10 +141,9 @@ export default function InsightEngine() {
       setJobId(jobData.jobId)
       
       // If it's a duplicate job, don't start analysis again
-      if (jobData.isDuplicate) {
+      if (jobData) {
         console.log('Using existing job, starting polling')
         pollJobStatus(jobData.jobId)
-        return
       }
       
       // Start the analysis
@@ -168,7 +160,6 @@ export default function InsightEngine() {
         const startError = await startRes.json()
         throw new Error(`Failed to start analysis: ${startError.error || startRes.status}`)
       }
-      
       console.log(`[${jobData.jobId}] Analysis started successfully`)
       pollJobStatus(jobData.jobId)
       
@@ -242,12 +233,12 @@ export default function InsightEngine() {
 
 
   const pollJobStatus = (jobId: string) => {
-    if (pollingRef.current) clearInterval(pollingRef.current)
+    // if (pollingRef.current) clearInterval(pollingRef.current)
     const poll = async () => {
       try {
-        const res = await fetch(`/api/jobs/${jobId}`)
+        const res = await fetch(`/api/jobs?jobId=${jobId}`)
         const data = await res.json()
-        console.log('📊 Job Status Update:', { jobId, status: data.status, hasFinalReport: !!data.finalReport })
+        console.log('📊 Job Status Update:', { jobId, status: data.status })
         setJobStatus(data.status)
         setJobError(data.error)
         if ((data.status === "completed" || data.status === "complete") && data.finalReport) {
@@ -255,12 +246,11 @@ export default function InsightEngine() {
           setFinalReport(data.finalReport)
           setIsProcessing(false)
           setIsRedirecting(true) // Set redirecting state to prevent landing page flash
-          clearInterval(pollingRef.current as NodeJS.Timeout)
+          // clearInterval(pollingRef.current as NodeJS.Timeout)
           
           // Generate and log the report link
           const reportUrl = `${window.location.origin}/report/${jobId}`
           console.log('📧 Report Link Generated:', reportUrl)
-          console.log('📧 Email this link to the user:', reportUrl)
           
           // TODO: Uncomment when email service is ready
           // await sendEmailWithReportLink(data.email, reportUrl, data.finalReport)
@@ -276,11 +266,14 @@ export default function InsightEngine() {
           }, 1000) // 1 second delay to show completion
         } else if (data.status === "error") {
           setIsProcessing(false)
-          clearInterval(pollingRef.current as NodeJS.Timeout)
+          // clearInterval(pollingRef.current as NodeJS.Timeout)
           // Clean up sessionStorage
           sessionStorage.removeItem('analysisEmail')
           sessionStorage.removeItem('analysisCaptchaToken')
           sessionStorage.removeItem('analysisFile')
+        }else {
+          // Not complete, poll again after 1 second
+          setTimeout(poll, 2000);
         }
       } catch (err: any) {
         setJobError("Failed to fetch job status")
@@ -293,7 +286,7 @@ export default function InsightEngine() {
       }
     }
     poll()
-    pollingRef.current = setInterval(poll, 2000) // Poll every 2 seconds for better UX
+    // pollingRef.current = setInterval(poll, 500) // Poll every 1 second for better UX
   }
 
   const handleScrollToUpload = () => {

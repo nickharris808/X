@@ -60,20 +60,14 @@ export async function runAnalysis(jobId: string) {
   
   let job;
   try {
-    console.log(`[${jobId}] Getting job from database...`)
     try {
       job = await getJob(jobId)
       if (!job) {
         console.error(`Job ${jobId} not found.`)
         return
       }
-
-      console.log(`[${jobId}] Job found, current status: ${job.status}`)
-      
-      // Update status to parsing at the start
-      console.log(`[${jobId}] Updating status to parsing...`)
       await updateJob(jobId, { status: "parsing" })
-      console.log(`[${jobId}] Starting analysis - status updated to parsing`)
+
     } catch (dbError) {
       console.error(`[${jobId}] Database operation failed:`, dbError)
       throw dbError
@@ -110,9 +104,6 @@ GUIDELINES:
 4.  **Emphasize Source Quality:** "Prioritize primary sources: official company press releases, regulatory filings, academic journals, and reports from reputable market research firms. Avoid unverified blogs or press release aggregators. All claims must be supported by inline citations."
 5.  **Final Output:** Return ONLY the generated prompt for the research AI. Do not conduct the research yourself.`
 
-    console.log(`[${jobId}] [GPT-4.1] Sending prompt for research plan generation:`)
-    console.log(promptGenerationInstructions , "promptGenerationInstructions")
-    console.log('User content:', `Generate a research prompt based on this text:\n\n---\n\n${rawText.substring(0, 12000)}`)
 
     const promptResponse = await openai.chat.completions.create({
       // Use a valid model name
@@ -127,14 +118,11 @@ GUIDELINES:
     })
     const deepResearchPrompt = promptResponse.choices[0].message.content ?? ""
     await updateJob(jobId, { deepResearchPrompt })
-    console.log(`[${jobId}] [GPT-4.1] Response for research plan:`)
-    console.log(promptResponse.choices[0].message.content)
     console.log(`[${jobId}] Deep research prompt generated.`)
 
     // --- Step 4: Executing Deep Research ---
     await updateJob(jobId, { status: "researching" })
     console.log(`[${jobId}] [O4 Mini] Sending research plan to deep research model:`)
-    console.log(deepResearchPrompt,"deepResearchPrompt================")
 
     // Simulating the async call with a webhook.
     const deepResearchResponse = await openai.chat.completions.create({
@@ -171,7 +159,7 @@ GUIDELINES:
   } catch (error: any) {
     console.error(`[${jobId}] Analysis failed:`, error)
     await updateJob(jobId, { status: "error", error: error.message })
-    // await sendErrorEmail(job.email, jobId, error.message)
+    await sendErrorEmail(job?.email ?? "", jobId, error.message)
     // Note: We can't access job.filePath here since job might be null
     // The cleanup will be handled by the webhook or other cleanup functions
   }

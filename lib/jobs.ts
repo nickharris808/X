@@ -60,6 +60,7 @@ export async function createJob(job: Job) {
 }
 
 export async function getJob(id: string): Promise<Job | null> {
+  console.log('Getting=============', id)
   if (useInMemoryDB) {
     return inMemoryJobs.get(id) || null
   }
@@ -90,6 +91,7 @@ export async function updateJob(id: string, updates: Partial<Job>) {
 }
 
 export async function getJobs(): Promise<Job[]> {
+  console.log('Getting jobs in jobs.ts=============',useInMemoryDB)
   if (useInMemoryDB) {
     return Array.from(inMemoryJobs.values())
   }
