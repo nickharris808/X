@@ -106,7 +106,7 @@ GUIDELINES:
     await updateJob(jobId, { status: "complete", finalReport: finalReportJson })
     console.log(`[${jobId}] Final report synthesized and saved.`)
 
-    // await sendCompletionEmail(job.email, jobId)
+    await sendCompletionEmail(job.email, jobId)
     await cleanupFile(job.filePath)
     
     // Also clean up any old files in the uploads directory
