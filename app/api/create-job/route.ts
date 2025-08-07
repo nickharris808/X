@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
 
     // Check for recent duplicate jobs (same email, last 1 minute)
     const recentJobs = await getJobs()
+    console.log('Recent jobs: inside create-job/route.ts',recentJobs)
     const oneMinuteAgo = new Date(Date.now() - 1 * 60 * 1000)
     const duplicateJob = recentJobs.find(job => 
       job.email === email && 

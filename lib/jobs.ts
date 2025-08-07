@@ -60,54 +60,38 @@ export async function createJob(job: Job) {
 }
 
 export async function getJob(id: string): Promise<Job | null> {
-  try {
-    if (useInMemoryDB) {
-      return inMemoryJobs.get(id) || null
-    }
-    
-    const client = await getClient()
-    if (!client) {
-      console.error('No MongoDB client available for getJob:', id)
-      return null
-    }
-    
-    const db = client.db(dbName)
-    const result = await db.collection("jobs").findOne({ id })
-    console.log(`✅ Job ${id} retrieved successfully:`, result ? 'Found' : 'Not found')
-    return result as Job | null
-  } catch (error) {
-    console.error(`❌ Failed to get job ${id}:`, error)
-    throw error
+  console.log('Getting=============', id)
+  if (useInMemoryDB) {
+    return inMemoryJobs.get(id) || null
   }
+  
+  const client = await getClient()
+  if (!client) return null
+  
+  const db = client.db(dbName)
+  const result = await db.collection("jobs").findOne({ id })
+  return result as Job | null
 }
 
 export async function updateJob(id: string, updates: Partial<Job>) {
-  try {
-    if (useInMemoryDB) {
-      const existingJob = inMemoryJobs.get(id)
-      if (existingJob) {
-        inMemoryJobs.set(id, { ...existingJob, ...updates })
-        console.log('Job updated in memory:', id, updates)
-      }
-      return
+  if (useInMemoryDB) {
+    const existingJob = inMemoryJobs.get(id)
+    if (existingJob) {
+      inMemoryJobs.set(id, { ...existingJob, ...updates })
+      console.log('Job updated in memory:', id, updates)
     }
-    
-    const client = await getClient()
-    if (!client) {
-      console.error('No MongoDB client available for updateJob:', id)
-      return
-    }
-    
-    const db = client.db(dbName)
-    const result = await db.collection("jobs").updateOne({ id }, { $set: updates })
-    console.log(`✅ Job ${id} updated successfully:`, updates, 'Modified count:', result.modifiedCount)
-  } catch (error) {
-    console.error(`❌ Failed to update job ${id}:`, error)
-    throw error
+    return
   }
+  
+  const client = await getClient()
+  if (!client) return
+  
+  const db = client.db(dbName)
+  await db.collection("jobs").updateOne({ id }, { $set: updates })
 }
 
 export async function getJobs(): Promise<Job[]> {
+  console.log('Getting jobs in jobs.ts=============',useInMemoryDB)
   if (useInMemoryDB) {
     return Array.from(inMemoryJobs.values())
   }

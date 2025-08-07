@@ -60,28 +60,14 @@ export async function runAnalysis(jobId: string) {
   
   let job;
   try {
-    console.log(`[${jobId}] Getting job from database...`)
     try {
       job = await getJob(jobId)
       if (!job) {
         console.error(`Job ${jobId} not found.`)
         return
       }
+      await updateJob(jobId, { status: "parsing" })
 
-      console.log(`[${jobId}] Job found, current status: ${job.status}`)
-      
-      // Update status to parsing at the start
-      console.log(`[${jobId}] Updating status to parsing...`)
-      try {
-        await updateJob(jobId, { status: "parsing" })
-        console.log(`[${jobId}] ✅ Status successfully updated to parsing`)
-      } catch (updateError) {
-        console.error(`[${jobId}] ❌ Failed to update status to parsing:`, updateError)
-        throw updateError
-      }
-      
-      // Add a small delay to make the parsing step visible
-      await new Promise(resolve => setTimeout(resolve, 2000))
     } catch (dbError) {
       console.error(`[${jobId}] Database operation failed:`, dbError)
       throw dbError
@@ -105,18 +91,7 @@ export async function runAnalysis(jobId: string) {
     }
 
     // --- Step 3: Intelligent Prompt Generation ---
-    console.log(`[${jobId}] Starting prompt generation...`)
-    try {
-      await updateJob(jobId, { status: "prompting" })
-      console.log(`[${jobId}] ✅ Status successfully updated to prompting`)
-    } catch (updateError) {
-      console.error(`[${jobId}] ❌ Failed to update status to prompting:`, updateError)
-      throw updateError
-    }
-    
-    // Add a small delay to make the prompting step visible
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
+    await updateJob(jobId, { status: "prompting" })
     const promptGenerationInstructions = `You are an expert VC analyst. Your task is to create a detailed, structured research prompt for another AI model based on the provided text from a startup's pitch deck or business plan. The goal is to uncover the information needed for a comprehensive due diligence report.
 GUIDELINES:
 1.  **Identify Core Entities:** From the text, extract the company name, key products/services, target market, and core technology claims.
@@ -129,9 +104,6 @@ GUIDELINES:
 4.  **Emphasize Source Quality:** "Prioritize primary sources: official company press releases, regulatory filings, academic journals, and reports from reputable market research firms. Avoid unverified blogs or press release aggregators. All claims must be supported by inline citations."
 5.  **Final Output:** Return ONLY the generated prompt for the research AI. Do not conduct the research yourself.`
 
-    console.log(`[${jobId}] [GPT-4.1] Sending prompt for research plan generation:`)
-    console.log(promptGenerationInstructions , "promptGenerationInstructions")
-    console.log('User content:', `Generate a research prompt based on this text:\n\n---\n\n${rawText.substring(0, 12000)}`)
 
     const promptResponse = await openai.chat.completions.create({
       // Use a valid model name
@@ -146,29 +118,15 @@ GUIDELINES:
     })
     const deepResearchPrompt = promptResponse.choices[0].message.content ?? ""
     await updateJob(jobId, { deepResearchPrompt })
-    console.log(`[${jobId}] [GPT-4.1] Response for research plan:`)
-    console.log(promptResponse.choices[0].message.content)
     console.log(`[${jobId}] Deep research prompt generated.`)
 
     // --- Step 4: Executing Deep Research ---
-    console.log(`[${jobId}] Starting deep research...`)
-    try {
-      await updateJob(jobId, { status: "researching" })
-      console.log(`[${jobId}] ✅ Status successfully updated to researching`)
-    } catch (updateError) {
-      console.error(`[${jobId}] ❌ Failed to update status to researching:`, updateError)
-      throw updateError
-    }
-    
-    // Add a small delay to make the researching step visible
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
+    await updateJob(jobId, { status: "researching" })
     console.log(`[${jobId}] [O4 Mini] Sending research plan to deep research model:`)
-    console.log(deepResearchPrompt,"deepResearchPrompt================")
 
     // Simulating the async call with a webhook.
     const deepResearchResponse = await openai.chat.completions.create({
-      model: "gpt-4o",  //Deep Research"
+      model: "gpt-4o",  //Deep Research”
       messages: [
         {
           role: "system",
@@ -180,47 +138,28 @@ GUIDELINES:
       // tools: [{ type: "web_search" }], // Removed to fix linter error
     })
     const researchResult = deepResearchResponse.choices[0].message.content
-    console.log(`[${jobId}] Deep research completed successfully`)
+   
 
     // Simulate the webhook call
     const baseUrl = process.env.BASE_URL || "http://localhost:3000";
     const webhookUrl = `${baseUrl}/api/webhook/research-complete?jobId=${jobId}`;
     console.log(`[${jobId}] Deep research finished. Calling webhook: ${webhookUrl}`);
-    
-    try {
-      await fetch(webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content: [
-            {
-              text: researchResult,
-              annotations: extractSources(researchResult ?? ""),
-            },
-          ],
-        }),
-      })
-      console.log(`[${jobId}] Webhook called successfully`)
-    } catch (webhookError) {
-      console.error(`[${jobId}] Webhook call failed:`, webhookError)
-      // Don't fail the entire process if webhook fails
-    }
-    
+    await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        content: [
+          {
+            text: researchResult,
+            annotations: extractSources(researchResult ?? ""),
+          },
+        ],
+      }),
+    })
   } catch (error: any) {
     console.error(`[${jobId}] Analysis failed:`, error)
-    if (job) {
-      try {
-        await updateJob(jobId, { status: "error", error: error.message })
-        console.log(`[${jobId}] ✅ Error status updated successfully`)
-      } catch (updateError) {
-        console.error(`[${jobId}] ❌ Failed to update error status:`, updateError)
-      }
-      try {
-        await sendErrorEmail(job.email, jobId, error.message)
-      } catch (emailError) {
-        console.error(`[${jobId}] Failed to send error email:`, emailError)
-      }
-    }
+    await updateJob(jobId, { status: "error", error: error.message })
+    await sendErrorEmail(job?.email ?? "", jobId, error.message)
     // Note: We can't access job.filePath here since job might be null
     // The cleanup will be handled by the webhook or other cleanup functions
   }

@@ -42,16 +42,6 @@ export default function InsightEngine() {
       }
     }
   }, [])
-  
-  // Debug jobStatus changes
-  useEffect(() => {
-    console.log('🔄 jobStatus changed to:', jobStatus)
-  }, [jobStatus])
-  
-  // Debug isProcessing changes
-  useEffect(() => {
-    console.log('🔄 isProcessing changed to:', isProcessing)
-  }, [isProcessing])
 
   const handleFileChange = (selectedFile: File | null) => {
     if (selectedFile) {
@@ -96,7 +86,6 @@ export default function InsightEngine() {
     setOcrText(null)
   }
 
-
     const checkOcrComplete = async (text: string) => {
     
     try {
@@ -105,7 +94,6 @@ export default function InsightEngine() {
       
       // Prevent multiple calls
       if (isProcessing || isJobCreating || hasStartedJob || processingJobId === textHash) {
-        console.log('Already processing, creating job, job already started, or processing same text, skipping duplicate call')
         console.log('isProcessing:', isProcessing, 'isJobCreating:', isJobCreating, 'hasStartedJob:', hasStartedJob, 'processingJobId:', processingJobId, 'textHash:', textHash)
         return
       }
@@ -146,7 +134,6 @@ export default function InsightEngine() {
       })
       
       const jobData = await jobRes.json()
-      
       if (!jobRes.ok) {
         throw new Error(jobData.error || `Failed to create job (${jobRes.status})`)
       }
@@ -154,10 +141,9 @@ export default function InsightEngine() {
       setJobId(jobData.jobId)
       
       // If it's a duplicate job, don't start analysis again
-      if (jobData.isDuplicate) {
+      if (jobData) {
         console.log('Using existing job, starting polling')
         pollJobStatus(jobData.jobId)
-        return
       }
       
       // Start the analysis
@@ -174,7 +160,6 @@ export default function InsightEngine() {
         const startError = await startRes.json()
         throw new Error(`Failed to start analysis: ${startError.error || startRes.status}`)
       }
-      
       console.log(`[${jobData.jobId}] Analysis started successfully`)
       pollJobStatus(jobData.jobId)
       
@@ -247,42 +232,25 @@ export default function InsightEngine() {
 
 
 
-    const pollJobStatus = (jobId: string) => {
-    if (pollingRef.current) clearInterval(pollingRef.current)
-    
-    let lastStatus: string | null = null
-    let stuckCounter = 0
-    
+  const pollJobStatus = (jobId: string) => {
+    // if (pollingRef.current) clearInterval(pollingRef.current)
     const poll = async () => {
       try {
-        const res = await fetch(`/api/jobs/${jobId}`)
+        const res = await fetch(`/api/jobs?jobId=${jobId}`)
         const data = await res.json()
-        console.log('📊 Job Status Update:', { jobId, status: data.status, hasFinalReport: !!data.finalReport })
-        
-        // Check if status changed
-        if (data.status !== lastStatus) {
-          console.log('🔄 Status changed from', lastStatus, 'to', data.status)
-          lastStatus = data.status
-          stuckCounter = 0
-        } else if (data.status === 'pending') {
-          stuckCounter++
-          console.log(`⚠️ Status stuck at ${data.status} for ${stuckCounter} polls`)
-        }
-        
+        console.log('📊 Job Status Update:', { jobId, status: data.status })
         setJobStatus(data.status)
         setJobError(data.error)
-        
         if ((data.status === "completed" || data.status === "complete") && data.finalReport) {
           console.log('🎉 Analysis Complete! Redirecting to report...')
           setFinalReport(data.finalReport)
           setIsProcessing(false)
           setIsRedirecting(true) // Set redirecting state to prevent landing page flash
-          clearInterval(pollingRef.current as NodeJS.Timeout)
+          // clearInterval(pollingRef.current as NodeJS.Timeout)
           
           // Generate and log the report link
           const reportUrl = `${window.location.origin}/report/${jobId}`
           console.log('📧 Report Link Generated:', reportUrl)
-          console.log('📧 Email this link to the user:', reportUrl)
           
           // TODO: Uncomment when email service is ready
           // await sendEmailWithReportLink(data.email, reportUrl, data.finalReport)
@@ -297,18 +265,17 @@ export default function InsightEngine() {
             window.location.href = reportUrl
           }, 1000) // 1 second delay to show completion
         } else if (data.status === "error") {
-          console.log('❌ Analysis failed with error status')
           setIsProcessing(false)
-          clearInterval(pollingRef.current as NodeJS.Timeout)
+          // clearInterval(pollingRef.current as NodeJS.Timeout)
           // Clean up sessionStorage
           sessionStorage.removeItem('analysisEmail')
           sessionStorage.removeItem('analysisCaptchaToken')
           sessionStorage.removeItem('analysisFile')
-        } else {
-          console.log(`📊 Current status: ${data.status}, waiting for completion...`)
+        }else {
+          // Not complete, poll again after 1 second
+          setTimeout(poll, 2000);
         }
       } catch (err: any) {
-        console.error('❌ Polling error:', err)
         setJobError("Failed to fetch job status")
         setIsProcessing(false)
         clearInterval(pollingRef.current as NodeJS.Timeout)
@@ -318,10 +285,8 @@ export default function InsightEngine() {
         sessionStorage.removeItem('analysisFile')
       }
     }
-    
-    console.log(`🔄 Starting polling for job: ${jobId}`)
-    poll() // Poll immediately
-    pollingRef.current = setInterval(poll, 1000) // Poll every 1 second for better UX
+    poll()
+    // pollingRef.current = setInterval(poll, 500) // Poll every 1 second for better UX
   }
 
   const handleScrollToUpload = () => {
@@ -714,26 +679,14 @@ function ProcessingPage({
     { name: "Complete", key: "completed" },
   ]
   
-  // Remove duplicates and get unique steps
-  const uniqueSteps = statusSteps.filter((step, index, self) => 
-    index === self.findIndex(s => s.key === step.key)
-  )
-  
   // Determine current step - if jobStatus is null, we're in parsing phase
-  const currentStep = jobStatus ? uniqueSteps.findIndex(s => s.key === jobStatus) : 0
+  const currentStep = jobStatus ? statusSteps.findIndex(s => s.key === jobStatus) : 0
+  
+  // Debug logging
+  console.log('ProcessingPage Debug:', { jobStatus, currentStep, statusSteps: statusSteps.map(s => s.key) })
   
   // Check if analysis is complete
   const isComplete = jobStatus === 'complete' || jobStatus === 'completed'
-  
-  // Debug logging
-  console.log('ProcessingPage Debug:', { 
-    timestamp: new Date().toISOString(),
-    jobStatus, 
-    currentStep, 
-    uniqueSteps: uniqueSteps.map(s => s.key),
-    isComplete,
-    uniqueStepsLength: uniqueSteps.length
-  })
 
   return (
     <div className="bg-[#F4F4F4] min-h-screen flex flex-col items-center justify-center text-center p-6">
@@ -751,7 +704,7 @@ function ProcessingPage({
           </p>
         )}
         <div className="mt-8 space-y-4 text-left">
-          {uniqueSteps.slice(0, -1).map((item, index) => (
+          {statusSteps.slice(0, -1).map((item, index) => (
             <motion.div
               key={item.name}
               initial={{ opacity: 0, x: -20 }}

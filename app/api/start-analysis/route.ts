@@ -29,17 +29,19 @@ export async function POST(req: NextRequest) {
     // Start the analysis immediately but don't wait for completion
     console.log(`[${jobId}] About to call runAnalysis...`)
     
-    // Start the analysis asynchronously so frontend can poll intermediate states
-    console.log(`[${jobId}] Starting runAnalysis asynchronously...`)
-    
-    // Start the analysis in the background
-    runAnalysis(jobId).catch(error => {
+    // For now, let's try running it synchronously to see if it works
+    try {
+      console.log(`[${jobId}] Starting runAnalysis synchronously...`)
+      await runAnalysis(jobId)
+      console.log(`[${jobId}] runAnalysis completed successfully`)
+    } catch (error) {
       console.error(`[${jobId}] runAnalysis failed:`, error)
-    })
+      return NextResponse.json({ error: "Analysis failed to start." }, { status: 500 })
+    }
     
-    console.log(`[${jobId}] runAnalysis started successfully`)
+    console.log(`[${jobId}] runAnalysis completed successfully`)
     
-    return NextResponse.json({ message: "Analysis started.", jobId }, { status: 202 })
+    return NextResponse.json({ message: "Analysis completed.", jobId }, { status: 200 })
   } catch (error: any) {
     console.error("Failed to start analysis:", error)
     return NextResponse.json({ error: "Internal server error." }, { status: 500 })
