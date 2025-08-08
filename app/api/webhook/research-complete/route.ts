@@ -37,11 +37,16 @@ export async function POST(req: NextRequest) {
     const reportTextWithMarkers = researchContent.text
     const sourceAnnotations = researchContent.annotations
 
-    const sourcesList = sourceAnnotations.map((anno: any, index: number) => ({
-      id: index + 1,
-      title: anno.title,
-      url: anno.url,
-    }))
+    console.log(`[${jobId}] Source annotations structure:`, JSON.stringify(sourceAnnotations, null, 2))
+
+    const sourcesList = sourceAnnotations.map((anno: any, index: number) => {
+      console.log(`[${jobId}] Processing annotation ${index + 1}:`, anno)
+      return {
+        id: index + 1,
+        title: anno.title || anno.name || anno.text || "Untitled Source",
+        url: anno.url || anno.link || anno.href || "#",
+      }
+    })
 
     const finalReportInstructions = `You are a meticulous data structuring expert. Your task is to parse a research report and a list of sources to populate a structured JSON object. You must be precise and never invent information.
 GUIDELINES:

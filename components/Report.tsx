@@ -391,9 +391,9 @@ export default function Report({ report }: { report: any }) {
                     transition={{ duration: 0.5 }}
                     className="p-2 rounded-md"
                   >
-                    {source.title}{" "}
+                    {source.title || "Untitled Source"}{" "}
                     <Link
-                      href={source.url}
+                      href={source.url || "#"}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-brand-green hover:underline"

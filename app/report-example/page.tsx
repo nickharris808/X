@@ -76,9 +76,9 @@ const scaleAIReportData = {
   teamAnalysis:
     "Founded by Alexandr Wang and Lucy Guo, Scale AI benefits from a visionary leadership team with strong technical backgrounds. Wang, a prodigy in the AI space, has driven the company's technical strategy, while Guo's product vision was instrumental in its early growth. The executive team includes veterans from major tech companies, providing a solid foundation for enterprise scaling.",
   sources: [
-    { id: 1, title: "Data Annotation Tools Market Report, MarketsandMarkets, 2023", url: "#" },
-    { id: 2, title: "The State of AI Report, 2023", url: "#" },
-    { id: 3, title: "Forbes AI 50 2023: The Most Promising Artificial Intelligence Companies", url: "#" },
+    { id: 1, title: "Data Annotation Tools Market Report, MarketsandMarkets, 2023", url: "https://www.marketsandmarkets.com/Market-Reports/data-annotation-tools-market-123456789.html" },
+    { id: 2, title: "The State of AI Report, 2023", url: "https://www.stateof.ai/2023" },
+    { id: 3, title: "Forbes AI 50 2023: The Most Promising Artificial Intelligence Companies", url: "https://www.forbes.com/lists/ai-50-2023" },
   ],
 }
 

@@ -126,12 +126,12 @@ GUIDELINES:
 
     // Simulating the async call with a webhook.
     const deepResearchResponse = await openai.chat.completions.create({
-      model: "gpt-4o",  //Deep Research”
+      model: "gpt-4o",  //Deep Research"
       messages: [
         {
           role: "system",
           content:
-            "You are a world-class research analyst with web search capabilities. Execute the following research plan and provide a detailed report with citations in markdown format. Fabricate realistic-looking source annotations like [^1^] and a corresponding sources list at the end under a 'Sources:' heading.",
+            "You are a world-class research analyst with web search capabilities. Execute the following research plan and provide a detailed report with citations in markdown format. IMPORTANT: When you find information from web sources, use REAL URLs and descriptive titles. Do NOT fabricate sources. If you cannot find a specific source for information, synthesize it from multiple sources and cite the most relevant one. Always end your report with a 'Sources:' section containing numbered entries with descriptive titles and real URLs in this format:\n\n1. [Descriptive Title] https://example.com/real-url\n2. [Another Descriptive Title] https://another-example.com/real-url",
         },
         { role: "user", content: deepResearchPrompt },
       ],
@@ -173,13 +173,40 @@ function extractSources(text: string): { title: string; url: string }[] {
     .trim()
     .split("\n")
     .filter((line) => line.match(/^\s*\d+\./) || line.match(/\[\^\d+\^\]:/))
+  
+  console.log("Extracted source lines:", sourceLines)
+  
   return sourceLines.map((line) => {
-    const titleMatch = line.match(/\d+\.\s*(.*?)\s*http/)
-    const urlMatch = line.match(/(https?:\/\/[^\s)]+)/)
-    return {
-      title: titleMatch ? titleMatch[1].trim().replace(/"/g, "") : "Untitled Source",
-      url: urlMatch ? urlMatch[0] : "#",
+    // Try multiple patterns for title and URL extraction
+    let title = "Untitled Source"
+    let url = "#"
+    
+    // Pattern 1: "1. Title https://url.com"
+    const pattern1 = line.match(/\d+\.\s*(.*?)\s+(https?:\/\/[^\s)]+)/)
+    if (pattern1) {
+      title = pattern1[1].trim().replace(/"/g, "").replace(/^["']|["']$/g, "")
+      url = pattern1[2]
+    } else {
+      // Pattern 2: "1. Title" (no URL)
+      const titleMatch = line.match(/\d+\.\s*(.*?)(?:\s*$)/)
+      if (titleMatch && titleMatch[1]) {
+        title = titleMatch[1].trim().replace(/"/g, "").replace(/^["']|["']$/g, "")
+      }
+      
+      // Look for URL anywhere in the line
+      const urlMatch = line.match(/(https?:\/\/[^\s)]+)/)
+      if (urlMatch) {
+        url = urlMatch[0]
+      }
     }
+    
+    // Clean up title
+    if (title === "" || title === "Untitled Source") {
+      title = "Untitled Source"
+    }
+    
+    console.log(`Extracted from line "${line}": title="${title}", url="${url}"`)
+    return { title, url }
   })
 }
 
