@@ -128,7 +128,7 @@ export default function Report({ report }: { report: any }) {
   if (!report) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="h-12 w-12 animate-spin text-brand-green" />
+        <Loader2 className="h-12 w-12 animate-spin text-brand-blue" />
       </div>
     )
   }
@@ -138,13 +138,13 @@ export default function Report({ report }: { report: any }) {
       <header className="sticky top-0 bg-white/80 backdrop-blur-sm z-20 border-b">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center space-x-2">
-            <Image src="/logo.png" alt="Xcellerant Ventures Logo" width={190} height={52} />
+            <div className="text-2xl font-bold text-brand-blue">VivaMed Solutions</div>
           </Link>
           <div className="flex items-center space-x-2 sm:space-x-4">
             <div className="relative flex items-center">
               <Button
                 variant="outline"
-                className="border-brand-green text-brand-green hover:bg-green-50 hover:text-brand-green bg-transparent"
+                className="border-brand-blue text-brand-blue hover:bg-blue-50 hover:text-brand-blue bg-transparent"
                 onClick={handleShare}
               >
                 <Share2 className="h-4 w-4 sm:mr-2" />
@@ -164,7 +164,7 @@ export default function Report({ report }: { report: any }) {
               </AnimatePresence>
             </div>
             <Button
-              className="bg-brand-green hover:bg-brand-green-light text-white"
+              className="bg-brand-blue hover:bg-brand-blue-light text-white"
               onClick={handleDownloadPDF}
               disabled={isDownloading}
             >
@@ -184,7 +184,7 @@ export default function Report({ report }: { report: any }) {
           <strong>Disclaimer:</strong> This is an AI-generated report. The information herein is for illustrative purposes only and should not be considered investment advice.
         </div>
 
-        <h1 className="text-4xl font-bold text-brand-green">Investment Analysis: {report.companyName}</h1>
+        <h1 className="text-4xl font-bold text-brand-blue">Drug Development Analysis: {report.companyName}</h1>
         <p className="mt-2 text-lg text-gray-600">Generated on {new Date().toLocaleDateString()}</p>
 
         <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -204,7 +204,7 @@ export default function Report({ report }: { report: any }) {
                 <CardDescription>{report.valuation.narrative}</CardDescription>
               </CardHeader>
               <CardContent className="flex items-center justify-center text-center">
-                <div className="text-4xl font-bold text-brand-green">
+                <div className="text-4xl font-bold text-brand-blue">
                   {formatCurrency(report.valuation.low, report.valuation.currency)} -{" "}
                   {formatCurrency(report.valuation.high, report.valuation.currency)}
                 </div>
@@ -267,7 +267,7 @@ export default function Report({ report }: { report: any }) {
                         <sup
                           key={id}
                           onClick={() => handleSourceClick(id)}
-                          className="text-brand-green font-bold cursor-pointer hover:underline ml-1"
+                          className="text-brand-blue font-bold cursor-pointer hover:underline ml-1"
                         >
                           [{id}]
                         </sup>
@@ -302,7 +302,7 @@ export default function Report({ report }: { report: any }) {
                         <sup
                           key={id}
                           onClick={() => handleSourceClick(id)}
-                          className="text-brand-green font-bold cursor-pointer hover:underline ml-1"
+                          className="text-brand-blue font-bold cursor-pointer hover:underline ml-1"
                         >
                           [{id}]
                         </sup>
@@ -325,7 +325,7 @@ export default function Report({ report }: { report: any }) {
                         <sup
                           key={id}
                           onClick={() => handleSourceClick(id)}
-                          className="text-brand-green font-bold cursor-pointer hover:underline ml-1"
+                          className="text-brand-blue font-bold cursor-pointer hover:underline ml-1"
                         >
                           [{id}]
                         </sup>
@@ -396,7 +396,7 @@ export default function Report({ report }: { report: any }) {
                       href={source.url || "#"}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-brand-green hover:underline"
+                      className="text-brand-blue hover:underline"
                     >
                       view source
                     </Link>

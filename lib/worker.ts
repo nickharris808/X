@@ -92,16 +92,16 @@ export async function runAnalysis(jobId: string) {
 
     // --- Step 3: Intelligent Prompt Generation ---
     await updateJob(jobId, { status: "prompting" })
-    const promptGenerationInstructions = `You are an expert VC analyst. Your task is to create a detailed, structured research prompt for another AI model based on the provided text from a startup's pitch deck or business plan. The goal is to uncover the information needed for a comprehensive due diligence report.
+    const promptGenerationInstructions = `You are an expert drug development analyst. Your task is to create a detailed, structured research prompt for another AI model based on the provided text from a drug development project or pharmaceutical company data. The goal is to uncover the information needed for a comprehensive drug development analysis report.
 GUIDELINES:
-1.  **Identify Core Entities:** From the text, extract the company name, key products/services, target market, and core technology claims.
+1.  **Identify Core Entities:** From the text, extract the drug name, therapeutic area, development stage, target market, and key technology claims.
 2.  **Formulate Specific Research Questions:** Based on the entities, create a list of precise, data-driven questions. Do not be generic.
-    *   **Market Analysis:** Instead of "What's the market size?", ask "What is the TAM, SAM, and SOM for the [specific market, e.g., 'telehealth for geriatrics'] market, citing reports from 2022 or later from firms like Gartner, Forrester, or Grand View Research?"
-    *   **Competitive Landscape:** Instead of "Who are competitors?", ask "Identify the top 3 direct and 2 indirect competitors for a company offering [specific product]. For each, find their latest funding round, estimated market share, and key product differentiators."
-    *   **Technology & Product Validation:** "Search for patents, clinical trials (if applicable), or academic papers validating the [specific technology claim]. Also, find public user reviews or sentiment on platforms like G2, Capterra, or Reddit for [product name] or its closest competitors."
-    *   **Team & Execution Risk:** "Research the public profiles of the key founders mentioned: [Founder Name 1], [Founder Name 2]. Have they had previous successful exits or senior roles in relevant industries? Cite news articles or interviews."
-3.  **Request Specific Output Formatting:** Explicitly instruct the research AI to structure its findings. "The final output must include a summary, followed by dedicated sections for Market, Competition, Technology, and Team. Create a markdown table for the competitive landscape and another for market size figures."
-4.  **Emphasize Source Quality:** "Prioritize primary sources: official company press releases, regulatory filings, academic journals, and reports from reputable market research firms. Avoid unverified blogs or press release aggregators. All claims must be supported by inline citations."
+    *   **Market Analysis:** Instead of "What's the market size?", ask "What is the TAM, SAM, and SOM for the [specific therapeutic area, e.g., 'Alzheimer's disease treatment'] market, citing reports from 2022 or later from firms like Evaluate Pharma, IQVIA, or Grand View Research?"
+    *   **Competitive Landscape:** Instead of "Who are competitors?", ask "Identify the top 3 direct and 2 indirect competitors for a drug targeting [specific mechanism/indication]. For each, find their development stage, estimated market share, and key differentiators."
+    *   **Technology & IP Validation:** "Search for patents, clinical trials, or academic papers validating the [specific drug mechanism/technology]. Also, find regulatory status and approval timelines for similar drugs in this therapeutic area."
+    *   **Risk Assessment:** "Research the clinical trial success rates, regulatory hurdles, and market adoption patterns for drugs in [therapeutic area]. What are the key risk factors for this drug development program?"
+3.  **Request Specific Output Formatting:** Explicitly instruct the research AI to structure its findings. "The final output must include a summary, followed by dedicated sections for Market Analysis, Competitive Landscape, IP Assessment, and Risk Analysis. Create a markdown table for the competitive landscape and another for market size figures."
+4.  **Emphasize Source Quality:** "Prioritize primary sources: official company press releases, regulatory filings, clinical trial databases, and reports from reputable pharmaceutical research firms. Avoid unverified blogs or press release aggregators. All claims must be supported by inline citations."
 5.  **Final Output:** Return ONLY the generated prompt for the research AI. Do not conduct the research yourself.`
 
 
@@ -131,7 +131,7 @@ GUIDELINES:
         {
           role: "system",
           content:
-            "You are a world-class research analyst with web search capabilities. Execute the following research plan and provide a detailed report with citations in markdown format. IMPORTANT: When you find information from web sources, use REAL URLs and descriptive titles. Do NOT fabricate sources. If you cannot find a specific source for information, synthesize it from multiple sources and cite the most relevant one. Always end your report with a 'Sources:' section containing numbered entries with descriptive titles and real URLs in this format:\n\n1. [Descriptive Title] https://example.com/real-url\n2. [Another Descriptive Title] https://another-example.com/real-url",
+            "You are a world-class drug development research analyst with web search capabilities. Execute the following research plan and provide a detailed report with citations in markdown format. Focus on pharmaceutical industry data, clinical trial information, regulatory status, and market analysis. IMPORTANT: When you find information from web sources, use REAL URLs and descriptive titles. Do NOT fabricate sources. If you cannot find a specific source for information, synthesize it from multiple sources and cite the most relevant one. Always end your report with a 'Sources:' section containing numbered entries with descriptive titles and real URLs in this format:\n\n1. [Descriptive Title] https://example.com/real-url\n2. [Another Descriptive Title] https://another-example.com/real-url",
         },
         { role: "user", content: deepResearchPrompt },
       ],

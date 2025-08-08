@@ -322,32 +322,31 @@ export default function InsightEngine() {
   }
 
   const navLinks = [
-    { name: "Portfolio", href: "https://www.xcellerantventures.com/portfolio-companies/" },
-    { name: "Team", href: "https://www.xcellerantventures.com/team/" },
-    { name: "About", href: "https://www.xcellerantventures.com/about/" },
-    { name: "Invest", href: "https://www.xcellerantventures.com/invest-in-xcellerant/" },
-    { name: "News", href: "https://www.xcellerantventures.com/news/" },
-    { name: "Contact", href: "https://www.xcellerantventures.com/contact-xcellerant/" },
+    { name: "About Us", href: "#" },
+    { name: "Our Team", href: "#" },
+    { name: "Partnerships", href: "#" },
+    { name: "Pipeline", href: "#" },
+    { name: "Contact", href: "#" },
   ]
 
   const analysisPillars = [
     {
-      icon: <BarChart className="h-10 w-10 text-brand-green" />,
-      title: "Market & TAM Analysis",
+      icon: <BarChart className="h-10 w-10 text-brand-blue" />,
+      title: "Risk-Adjusted NPV Analysis",
       description:
-        "Instantly sizes your market opportunity, referencing real-world data to validate your TAM, SAM, and SOM.",
+        "Calculate comprehensive Net Present Value with risk factors including clinical trial success rates, regulatory hurdles, and market adoption.",
     },
     {
-      icon: <Swords className="h-10 w-10 text-brand-green" />,
+      icon: <Swords className="h-10 w-10 text-brand-blue" />,
+      title: "IP Strength Assessment",
+      description:
+        "Evaluate patent portfolio strength, freedom-to-operate analysis, and competitive IP landscape in your therapeutic area.",
+    },
+    {
+      icon: <Users className="h-10 w-10 text-brand-blue" />,
       title: "Competitive Landscape",
       description:
-        "Identifies direct and indirect competitors, analyzing their funding, market position, and key differentiators.",
-    },
-    {
-      icon: <Users className="h-10 w-10 text-brand-green" />,
-      title: "Team & Execution Risk",
-      description:
-        "Assesses founder experience and background against your industry, highlighting strengths and potential risks.",
+        "Analyze direct and indirect competitors, their development stages, funding, and market positioning in your therapeutic space.",
     },
   ]
 
@@ -356,14 +355,14 @@ export default function InsightEngine() {
       <header className="sticky top-0 bg-white/80 backdrop-blur-sm z-20 border-b">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center space-x-2">
-            <Image src="/logo.png" alt="Xcellerant Ventures Logo" width={190} height={52} />
+            <div className="text-2xl font-bold text-brand-blue">VivaMed Solutions</div>
           </Link>
           <nav className="hidden md:flex items-center space-x-6">
             {navLinks.map((link) => (
               <Link
                 key={link.name}
                 href={link.href}
-                className="text-sm font-medium text-gray-600 hover:text-brand-green transition-colors"
+                className="text-sm font-medium text-gray-600 hover:text-brand-blue transition-colors"
               >
                 {link.name}
               </Link>
@@ -405,7 +404,7 @@ export default function InsightEngine() {
                   <Link
                     key={link.name}
                     href={link.href}
-                    className="text-lg font-medium text-gray-700 hover:text-brand-green transition-colors"
+                    className="text-lg font-medium text-gray-700 hover:text-brand-blue transition-colors"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     {link.name}
@@ -422,27 +421,27 @@ export default function InsightEngine() {
         <section className="container mx-auto px-6 py-20 md:py-28 text-center">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-tight">
-              Instant Pitch Deck Analysis.
+              Drug Development Intelligence.
               <br />
-              <span className="text-brand-green">A Glimpse of Our AI Evaluation.</span>
+              <span className="text-brand-blue">AI-Powered Risk Assessment & Valuation.</span>
             </h1>
             <p className="mt-6 max-w-3xl mx-auto text-lg text-gray-600">
-              This is a preview of our full due diligence process. Upload your deck to see how our Insight Engine
-              analyzes key metrics against our investment thesis.
+              Upload your drug development data to receive comprehensive analysis including risk-adjusted NPV, 
+              IP strength assessment, and competitive landscape evaluation.
             </p>
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button
                 size="lg"
-                className="w-full sm:w-auto bg-brand-green hover:bg-brand-green-light text-white"
+                className="w-full sm:w-auto bg-brand-blue hover:bg-brand-blue-light text-white"
                 onClick={handleScrollToUpload}
               >
-                Upload Deck & Analyze
+                Upload Drug Data & Analyze
               </Button>
               <Link href="/report-example" className="w-full sm:w-auto">
                 <Button
                   size="lg"
                   variant="outline"
-                  className="w-full border-gray-300 hover:border-brand-green hover:bg-green-50 transition-colors bg-transparent"
+                  className="w-full border-gray-300 hover:border-brand-blue hover:bg-blue-50 transition-colors bg-transparent"
                 >
                   View Example Report
                 </Button>
@@ -455,9 +454,9 @@ export default function InsightEngine() {
         <section className="bg-white py-20 md:py-24">
           <div className="container mx-auto px-6">
             <div className="max-w-3xl mx-auto text-center mb-16">
-              <h2 className="text-3xl md:text-4xl font-bold">Instant Diligence, Deconstructed</h2>
+              <h2 className="text-3xl md:text-4xl font-bold">Drug Development Intelligence, Deconstructed</h2>
               <p className="mt-4 text-lg text-gray-600">
-                Our AI doesn't just read your deck—it analyzes it across the key vectors that determine success.
+                Our AI doesn't just read your data—it analyzes it across the key vectors that determine drug development success.
               </p>
             </div>
             <div className="grid md:grid-cols-3 gap-10 text-center">
@@ -488,10 +487,11 @@ export default function InsightEngine() {
               transition={{ duration: 0.5, delay: 0.4 }}
               className="max-w-2xl mx-auto text-center"
             >
-              <h2 className="text-3xl md:text-4xl font-bold">Activate Your AI Analyst</h2>
+              <h2 className="text-3xl md:text-4xl font-bold">Activate Your AI Drug Analyst</h2>
               <p className="mt-4 text-lg text-gray-600">
-                PitchBook gives you a library. Consultants give you a bill. We give you an AI Analyst. Ingest any pitch
-                deck. Get the institutional-grade diligence you need to win the deal. Instantly.
+                Upload your drug development data to receive comprehensive analysis including risk-adjusted NPV, 
+                IP strength assessment, and competitive landscape evaluation. Get the insights you need to make 
+                informed development decisions.
               </p>
               <div className="mt-10">
                 {!file ? (
@@ -501,7 +501,7 @@ export default function InsightEngine() {
                     onDragOver={handleDragOver}
                     onDrop={handleDrop}
                     className={`relative p-10 border-2 border-dashed rounded-xl transition-all duration-300 bg-white ${
-                      isDragging ? "border-brand-green bg-green-50" : "border-gray-300"
+                      isDragging ? "border-brand-blue bg-blue-50" : "border-gray-300"
                     }`}
                   >
                     <input
@@ -512,10 +512,10 @@ export default function InsightEngine() {
                     />
                     <div className="flex flex-col items-center justify-center space-y-4">
                       <Upload
-                        className={`h-12 w-12 transition-colors ${isDragging ? "text-brand-green" : "text-gray-400"}`}
+                        className={`h-12 w-12 transition-colors ${isDragging ? "text-brand-blue" : "text-gray-400"}`}
                       />
                       <div className="text-gray-600">
-                        <span className="font-semibold text-brand-green cursor-pointer">Click to Upload</span>
+                        <span className="font-semibold text-brand-blue cursor-pointer">Click to Upload</span>
                         <span> or Drag and Drop</span>
                       </div>
                       <p className="text-sm text-gray-500">PDF, DOCX</p>
@@ -534,7 +534,7 @@ export default function InsightEngine() {
                 ) : (
                   <div className="bg-white p-4 rounded-lg shadow-md flex items-center justify-between text-left">
                     <div className="flex items-center space-x-3">
-                      <File className="h-6 w-6 text-brand-green" />
+                      <File className="h-6 w-6 text-brand-blue" />
                       <span className="font-medium">{file?.name}</span>
                     </div>
                     <button onClick={handleRemoveFile} className="p-1 rounded-full hover:bg-gray-100">
@@ -550,24 +550,24 @@ export default function InsightEngine() {
         {/* Comparison Section */}
         <section className="py-20 md:py-24">
           <div className="container mx-auto px-6 max-w-5xl">
-            <h2 className="text-center text-3xl md:text-4xl font-bold mb-12">The Old Playbook is Obsolete</h2>
+            <h2 className="text-center text-3xl md:text-4xl font-bold mb-12">The Old Drug Development Playbook is Obsolete</h2>
             <div className="grid md:grid-cols-2 gap-x-12 gap-y-8 text-left">
               <div className="border-l-4 border-red-300 pl-6">
                 <h3 className="text-2xl font-semibold mb-4">The Old Way</h3>
                 <p className="text-gray-700 leading-relaxed">
-                  <span className="font-bold">Static Data & High Walls</span>
+                  <span className="font-bold">Manual Analysis & High Costs</span>
                   <br />
-                  Pay $20k+ for access to static databases that require hours of manual filtering. The data is a
-                  commodity; the insight is your burden.
+                  Spend months and millions on consultants for basic market research and competitive analysis. 
+                  The data is static; the insights are limited and expensive.
                 </p>
               </div>
-              <div className="border-l-4 border-brand-green pl-6">
+              <div className="border-l-4 border-brand-blue pl-6">
                 <h3 className="text-2xl font-semibold mb-4">The New Way</h3>
                 <p className="text-gray-700 leading-relaxed">
-                  <span className="font-bold">Dynamic Intelligence on Command</span>
+                  <span className="font-bold">AI-Powered Intelligence on Demand</span>
                   <br />
-                  Get instant, synthesized analysis on any deal. Our AI does the work, connecting the dots to deliver
-                  actionable insights, not just data points.
+                  Get instant, comprehensive analysis of your drug development opportunity. Our AI evaluates 
+                  risk-adjusted NPV, IP strength, and competitive landscape in minutes, not months.
                 </p>
               </div>
             </div>
@@ -578,21 +578,14 @@ export default function InsightEngine() {
       <footer className="bg-gray-50 border-t">
         <div className="container mx-auto px-6 py-8 text-center">
           <p className="text-xs text-gray-500 max-w-4xl mx-auto">
-            The information herein is not complete and is subject to change. We may not sell securities of the Jetstream
-            Venture Fund until the Fund’s registration statement filed with the Securities and Exchange Commission is
-            effective. This post is not an offer to sell these securities and is not soliciting an offer to buy these
-            securities in any state where the offer or sale is not permitted. This post is not an offering, which can
-            only be made by a prospectus once the Fund’s registration statement has become effective. Investors should
-            consider the Fund’s investment objectives, risks, charges and expenses carefully before investing. The
-            Fund’s prospectus contains this and additional information about the Fund and can be obtained by calling{" "}
-            <a href="tel:1-888-577-7987" className="font-semibold text-brand-green hover:underline">
-              1-888-577-7987
-            </a>{" "}
-            or by emailing{" "}
-            <a href="mailto:support@sweaterventures.com" className="font-semibold text-brand-green hover:underline">
-              support@sweaterventures.com
+            The information herein is not complete and is subject to change. This analysis is for illustrative purposes 
+            only and should not be considered as investment advice or regulatory guidance. Drug development involves 
+            significant risks and uncertainties. Please consult with qualified professionals before making any development 
+            or investment decisions. For more information, contact{" "}
+            <a href="mailto:info@vivamedsolutions.com" className="font-semibold text-brand-blue hover:underline">
+              info@vivamedsolutions.com
             </a>
-            . The Fund’s prospectus should be read carefully before investing.
+            .
           </p>
         </div>
       </footer>
@@ -613,19 +606,19 @@ export default function InsightEngine() {
               className="bg-white rounded-lg shadow-xl w-full max-w-md p-8"
               onClick={(e) => e.stopPropagation()}
             >
-              <h2 className="text-2xl font-bold text-center">Start Your Analysis</h2>
+              <h2 className="text-2xl font-bold text-center">Start Your Drug Analysis</h2>
               <div className="space-y-6 mt-6">
                 <Input
                   type="email"
-                  placeholder="name@firm.com"
+                  placeholder="name@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="focus:ring-brand-green focus:border-brand-green"
+                  className="focus:ring-brand-blue focus:border-brand-blue"
                 />
                 <div className="flex items-center space-x-2">
                   <Checkbox id="terms" />
                   <label htmlFor="terms" className="text-sm text-gray-600">
-                    I agree to receive occasional updates from Xcellerant Ventures.
+                    I agree to receive occasional updates from VivaMed Solutions.
                   </label>
                 </div>
                 {/* CAPTCHA - Optional for demo */}
@@ -641,9 +634,9 @@ export default function InsightEngine() {
                 <Button
                   onClick={handleStartAnalysis}
                   disabled={!email || (!captchaToken && process.env.NODE_ENV !== 'development') || !file}
-                  className="w-full bg-brand-green hover:bg-brand-green-light text-white font-bold py-3 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                  className="w-full bg-brand-blue hover:bg-brand-blue-light text-white font-bold py-3 disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
-                  Start Analysis
+                  Start Drug Analysis
                 </Button>
               </div>
             </motion.div>
@@ -671,9 +664,9 @@ function ProcessingPage({
 }) {
   const statusSteps = [
     { name: "Starting Analysis", key: "pending" },
-    { name: "Parsing Document", key: "parsing" },
+    { name: "Parsing Drug Data", key: "parsing" },
     { name: "Generating Research Plan", key: "prompting" },
-    { name: "Conducting Deep Research", key: "researching" },
+    { name: "Conducting Market Research", key: "researching" },
     { name: "Synthesizing Final Report", key: "synthesizing" },
     { name: "Complete", key: "complete" },
     { name: "Complete", key: "completed" },
@@ -697,7 +690,7 @@ function ProcessingPage({
         className="w-full max-w-md"
       >
         <LoaderIcon className="h-16 w-16 text-gray-400 mx-auto animate-pulse" />
-        <h2 className="mt-8 text-3xl font-bold text-[#1D1D1D]">Analyzing Your Document...</h2>
+        <h2 className="mt-8 text-3xl font-bold text-[#1D1D1D]">Analyzing Your Drug Data...</h2>
         {jobStatus && (
           <p className="mt-2 text-sm text-gray-600">
             Current Status: <span className="font-semibold">{jobStatus}</span>
@@ -757,7 +750,7 @@ function ProcessingPage({
           </p>
         )}
         <Link href="/report-example">
-          <Button className="mt-8 bg-brand-green hover:bg-brand-green-light text-white">View Example Report</Button>
+          <Button className="mt-8 bg-brand-blue hover:bg-brand-blue-light text-white">View Example Report</Button>
         </Link>
       </motion.div>
     </div>

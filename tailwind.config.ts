@@ -53,8 +53,9 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        "brand-green": "#01A537",
-        "brand-green-light": "#64CB55",
+        "brand-blue": "#1e3a8a", // Dark blue from VivaMed
+        "brand-blue-light": "#3b82f6", // Light blue from VivaMed
+        "brand-blue-accent": "#60a5fa", // Accent blue
         "brand-dark": "#000000",
         "brand-neutral": "#ECECEC",
         "brand-light": "#FFFFFF",
