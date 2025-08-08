@@ -24,7 +24,7 @@ export async function sendCompletionEmail(to: string, jobId: string) {
       accessToken: accessToken.token,
     },
   });
-  const reportUrl = `${process.env.BASE_URL}/report/${jobId}`
+  const reportUrl = `${process.env.REPORT_URL}/report/${jobId}`
   console.log(`Sending completion email to ${to} for job ${jobId}`)
   
   const htmlTemplate = `
