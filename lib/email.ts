@@ -24,7 +24,7 @@ export async function sendCompletionEmail(to: string, jobId: string) {
       accessToken: accessToken.token,
     },
   });
-  const reportUrl = `${process.env.REPORT_URL}/report/${jobId}`
+  const reportUrl = `https://x-bed8-git-vivamed-nicks-projects-c58c13c7.vercel.app/report/${jobId}`
   console.log(`Sending completion email to ${to} for job ${jobId}`)
   
   const htmlTemplate = `
