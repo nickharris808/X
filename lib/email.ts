@@ -33,7 +33,7 @@ export async function sendCompletionEmail(to: string, jobId: string) {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Analysis Complete - Insight Engine</title>
+        <title>Analysis Complete - vivamed/title>
         <style>
             * {
                 margin: 0;
@@ -285,7 +285,7 @@ export async function sendErrorEmail(to: string, jobId: string, errorMessage: st
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Analysis Error - Insight Engine</title>
+        <title>Analysis Error - vivamed</title>
         <style>
             * {
                 margin: 0;
@@ -496,7 +496,7 @@ export async function sendErrorEmail(to: string, jobId: string, errorMessage: st
             </div>
             
             <div class="footer">
-                <p>Thank you for using Insight Engine!</p>
+                <p>Thank you for using vivamed!</p>
                 <p>Our support team is available to help resolve any issues.</p>
                 <div class="social-links">
                     <a href="#">Support</a> | 
@@ -512,7 +512,7 @@ export async function sendErrorEmail(to: string, jobId: string, errorMessage: st
   await transporter.sendMail({
     from: process.env.NODEMAILER_FROM || "dev.meerdev@gmail.com",
     to,
-    subject: "⚠️ There was a problem with your Insight Engine Analysis",
+    subject: "⚠️ There was a problem with your vivamed Analysis",
     text: `We're sorry, but there was an error processing your document for job ${jobId}.\n\nError: ${errorMessage}\n\nPlease try again or contact support.`,
     html: errorHtmlTemplate,
   })
