@@ -242,7 +242,7 @@ export async function sendCompletionEmail(to: string, jobId: string) {
             </div>
             
             <div class="footer">
-                <p>Thank you for using Insight Engine!</p>
+                <p>Thank you for using vivamed!</p>
                 <p>If you have any questions, feel free to reach out to our support team.</p>
                 <div class="social-links">
                     <a href="#">Support</a> | 
@@ -258,7 +258,7 @@ export async function sendCompletionEmail(to: string, jobId: string) {
   await transporter.sendMail({
     from: process.env.NODEMAILER_FROM || "dev.meerdev@gmail.com",
     to,
-    subject: "🎉 Your Insight Engine Analysis is Complete!",
+    subject: "🎉 Your vivamed Analysis is Complete!",
     text: `Your analysis for job ${jobId} is complete. View your report here: ${reportUrl}`,
     html: htmlTemplate,
   })
