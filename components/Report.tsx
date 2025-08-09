@@ -138,7 +138,10 @@ export default function Report({ report }: { report: any }) {
       <header className="sticky top-0 bg-white/80 backdrop-blur-sm z-20 border-b">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center space-x-2">
-            <div className="text-2xl font-bold text-brand-blue">VivaMed Solutions</div>
+            <div className=" text-brand-blue">
+            <img decoding="async" width="162" height="98" src="https://framerusercontent.com/images/jlEYz9CC2v5dfbcboLPtTwUzUUA.svg" alt="Logo Company" style={{ objectPosition: 'center center', objectFit: 'contain'}} />
+              
+            </div>
           </Link>
           <div className="flex items-center space-x-2 sm:space-x-4">
             <div className="relative flex items-center">

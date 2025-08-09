@@ -231,7 +231,7 @@ export async function sendCompletionEmail(to: string, jobId: string) {
                 </div>
                 
                 <div class="cta-button">
-                    <a href="${reportUrl}">📊 View Your Report</a>
+                    <a href="${reportUrl}">📊 Click here to view Your Report</a>
                 </div>
                 
                 <div class="message">
