@@ -11,7 +11,6 @@ oAuth2Client.setCredentials({
 });
 
 export async function sendCompletionEmail(to: string, jobId: string) {
-  console.log('===========xSending completion email to=================')
   const accessToken = await oAuth2Client.getAccessToken();
   const transporter = nodemailer.createTransport({
     service: "gmail",
