@@ -55,8 +55,6 @@ const openai = new OpenAI({
 
 
 export async function runAnalysis(jobId: string) {
-  console.log(`[${jobId}] ====== RUN ANALYSIS FUNCTION CALLED ======`)
-  console.log(`[${jobId}] runAnalysis function called`)
   
   let job;
   try {
@@ -79,11 +77,9 @@ export async function runAnalysis(jobId: string) {
     if (job.textContent) {
       // Use text content stored in database
       rawText = job.textContent
-      console.log(`[${jobId}] Text content loaded from database. Text length: ${rawText.length}`)
     } else if (job.mimeType === "text/plain") {
       // Fallback to file reading for backward compatibility
       rawText = await fs.readFile(job.filePath, 'utf-8')
-      console.log(`[${jobId}] Text loaded from file. Text length: ${rawText.length}`)
     } else {
       // For other files, we need to implement document parsing
       // For now, throw an error since parseDocument was removed
@@ -118,11 +114,9 @@ GUIDELINES:
     })
     const deepResearchPrompt = promptResponse.choices[0].message.content ?? ""
     await updateJob(jobId, { deepResearchPrompt })
-    console.log(`[${jobId}] Deep research prompt generated.`)
 
     // --- Step 4: Executing Deep Research ---
     await updateJob(jobId, { status: "researching" })
-    console.log(`[${jobId}] [O4 Mini] Sending research plan to deep research model:`)
 
     // Simulating the async call with a webhook.
     const deepResearchResponse = await openai.chat.completions.create({
@@ -131,10 +125,12 @@ GUIDELINES:
         {
           role: "system",
           content:
-            "You are a world-class drug development research analyst with web search capabilities. Execute the following research plan and provide a detailed report with citations in markdown format. Focus on pharmaceutical industry data, clinical trial information, regulatory status, and market analysis. IMPORTANT: When you find information from web sources, use REAL URLs and descriptive titles. Do NOT fabricate sources. If you cannot find a specific source for information, synthesize it from multiple sources and cite the most relevant one. Always end your report with a 'Sources:' section containing numbered entries with descriptive titles and real URLs in this format:\n\n1. [Descriptive Title] https://example.com/real-url\n2. [Another Descriptive Title] https://another-example.com/real-url",
+            "You are a world-class drug development research analyst with web search capabilities. Execute the following research plan and provide a detailed report with citations in markdown format. Focus on pharmaceutical industry data, clinical trial information, regulatory status, and market analysis. IMPORTANT: When you find information from web sources,Provide at least **40 unique and credible sources**, numbered from 1–40 (or more), use REAL URLs and descriptive titles. Do NOT fabricate sources. If you cannot find a specific source for information, synthesize it from multiple sources and cite the most relevant one. Always end your report with a 'Sources:' section containing numbered entries with descriptive titles and real URLs in this format:\n\n1. [Descriptive Title] https://example.com/real-url\n2. [Another Descriptive Title] https://another-example.com/real-url",
         },
         { role: "user", content: deepResearchPrompt },
       ],
+      temperature: 0.7,
+      max_tokens: 8192,
       // tools: [{ type: "web_search" }], // Removed to fix linter error
     })
     const researchResult = deepResearchResponse.choices[0].message.content
@@ -143,7 +139,6 @@ GUIDELINES:
     // Simulate the webhook call
     const baseUrl = process.env.BASE_URL || "http://localhost:3000";
     const webhookUrl = `${baseUrl}/api/webhook/research-complete?jobId=${jobId}`;
-    console.log(`[${jobId}] Deep research finished. Calling webhook: ${webhookUrl}`);
     await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -205,7 +200,6 @@ function extractSources(text: string): { title: string; url: string }[] {
       title = "Untitled Source"
     }
     
-    console.log(`Extracted from line "${line}": title="${title}", url="${url}"`)
     return { title, url }
   })
 }
@@ -215,7 +209,6 @@ export async function cleanupFile(filePath: string) {
     // Check if file exists before trying to delete
     await fs.access(filePath)
     await fs.unlink(filePath)
-    console.log(`[${path.basename(filePath)}] Cleaned up temporary file.`)
   } catch (error: any) {
     if (error.code === 'ENOENT') {
       console.log(`[${path.basename(filePath)}] File already deleted or doesn't exist.`)
@@ -261,7 +254,6 @@ export async function cleanupUploadsDirectory() {
         
         if (fileAge > oneDayMs) {
           await fs.unlink(filePath)
-          console.log(`[${file}] Cleaned up old file (${Math.round(fileAge / (60 * 60 * 1000))} hours old).`)
         }
       } catch (error: any) {
         if (error.code !== 'ENOENT') {
@@ -274,7 +266,6 @@ export async function cleanupUploadsDirectory() {
     const remainingFiles = await fs.readdir(uploadsDir)
     if (remainingFiles.length === 0) {
       await fs.rmdir(uploadsDir)
-      console.log("Removed empty uploads directory after cleanup.")
     }
   } catch (error) {
     console.error("Failed to clean up uploads directory:", error)
