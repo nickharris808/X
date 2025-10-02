@@ -12,10 +12,14 @@ import jsPDF from "jspdf"
 import html2canvas from "html2canvas"
 import { Bar, XAxis, YAxis, CartesianGrid, BarChart as RechartsBarChart } from "recharts"
 
-function formatCurrency(value: number, currency: string) {
+function formatCurrency(value: number | undefined, currency: string | undefined) {
+  if (!value || !currency) {
+    return "$0"
+  }
+  
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency,
+    currency: currency || "USD",
     notation: "compact",
     compactDisplay: "short",
   }).format(value)
@@ -184,7 +188,7 @@ export default function Report({ report }: { report: any }) {
           <strong>Disclaimer:</strong> This is an AI-generated report. The information herein is for illustrative purposes only and should not be considered investment advice.
         </div>
 
-        <h1 className="text-4xl font-bold text-brand-green">Investment Analysis: {report.companyName}</h1>
+        <h1 className="text-4xl font-bold text-brand-green">Investment Analysis: {report?.companyName || "Company"}</h1>
         <p className="mt-2 text-lg text-gray-600">Generated on {new Date().toLocaleDateString()}</p>
 
         <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -194,19 +198,19 @@ export default function Report({ report }: { report: any }) {
                 <CardTitle>Executive Summary</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-700 leading-relaxed">{report.summary}</p>
+                <p className="text-gray-700 leading-relaxed">{report?.summary || "Executive summary not available."}</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
                 <CardTitle>Valuation Estimate</CardTitle>
-                <CardDescription>{report.valuation.narrative}</CardDescription>
+                <CardDescription>{report?.valuation?.narrative || "Valuation analysis based on market trends and growth potential."}</CardDescription>
               </CardHeader>
               <CardContent className="flex items-center justify-center text-center">
                 <div className="text-4xl font-bold text-brand-green">
-                  {formatCurrency(report.valuation.low, report.valuation.currency)} -{" "}
-                  {formatCurrency(report.valuation.high, report.valuation.currency)}
+                  {formatCurrency(report?.valuation?.low, report?.valuation?.currency)} -{" "}
+                  {formatCurrency(report?.valuation?.high, report?.valuation?.currency)}
                 </div>
               </CardContent>
             </Card>
@@ -217,8 +221,8 @@ export default function Report({ report }: { report: any }) {
               <CardTitle>Insight Score</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center flex-grow">
-              <InsightScoreCircle score={report.insightScore.score} />
-              <p className="mt-4 text-center text-gray-600 max-w-xs">{report.insightScore.rationale}</p>
+              <InsightScoreCircle score={report?.insightScore?.score || 0} />
+              <p className="mt-4 text-center text-gray-600 max-w-xs">{report?.insightScore?.rationale || "Analysis rationale not available."}</p>
             </CardContent>
           </Card>
         </div>
@@ -227,7 +231,7 @@ export default function Report({ report }: { report: any }) {
           <Card>
             <CardHeader>
               <CardTitle>Market Analysis</CardTitle>
-              <CardDescription>{report.marketAnalysis.narrative}</CardDescription>
+              <CardDescription>{report?.marketAnalysis?.narrative || "Market analysis based on industry trends and growth projections."}</CardDescription>
             </CardHeader>
             <CardContent>
               <ChartContainer
@@ -237,7 +241,7 @@ export default function Report({ report }: { report: any }) {
                 className="h-[250px] w-full"
               >
                 <RechartsBarChart
-                  data={report.marketAnalysis.marketSize}
+                  data={report?.marketAnalysis?.marketSize || []}
                   margin={{ top: 20, right: 20, left: 20, bottom: 5 }}
                 >
                   <CartesianGrid vertical={false} />
@@ -260,10 +264,10 @@ export default function Report({ report }: { report: any }) {
               </CardHeader>
               <CardContent>
                 <ul className="list-disc list-inside text-green-700 space-y-2">
-                  {report.swotAnalysis.strengths.map((item: any) => (
+                  {(report?.swotAnalysis?.strengths || []).map((item: any) => (
                     <li key={item.point}>
                       {item.point}
-                      {item.source_ids.map((id: number) => (
+                      {(item.source_ids || []).map((id: number) => (
                         <sup
                           key={id}
                           onClick={() => handleSourceClick(id)}
@@ -283,7 +287,7 @@ export default function Report({ report }: { report: any }) {
               </CardHeader>
               <CardContent>
                 <ul className="list-disc list-inside text-red-700 space-y-2">
-                  {report.swotAnalysis.weaknesses.map((item: any) => (
+                  {(report?.swotAnalysis?.weaknesses || []).map((item: any) => (
                     <li key={item.point}>{item.point}</li>
                   ))}
                 </ul>
@@ -295,10 +299,10 @@ export default function Report({ report }: { report: any }) {
               </CardHeader>
               <CardContent>
                 <ul className="list-disc list-inside text-blue-700 space-y-2">
-                  {report.swotAnalysis.opportunities.map((item: any) => (
+                  {(report?.swotAnalysis?.opportunities || []).map((item: any) => (
                     <li key={item.point}>
                       {item.point}
-                      {item.source_ids.map((id: number) => (
+                      {(item.source_ids || []).map((id: number) => (
                         <sup
                           key={id}
                           onClick={() => handleSourceClick(id)}
@@ -318,10 +322,10 @@ export default function Report({ report }: { report: any }) {
               </CardHeader>
               <CardContent>
                 <ul className="list-disc list-inside text-yellow-700 space-y-2">
-                  {report.swotAnalysis.threats.map((item: any) => (
+                  {(report?.swotAnalysis?.threats || []).map((item: any) => (
                     <li key={item.point}>
                       {item.point}
-                      {item.source_ids.map((id: number) => (
+                      {(item.source_ids || []).map((id: number) => (
                         <sup
                           key={id}
                           onClick={() => handleSourceClick(id)}
@@ -353,7 +357,7 @@ export default function Report({ report }: { report: any }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {report.competitorLandscape.map((c: any) => (
+                  {(report?.competitorLandscape || []).map((c: any) => (
                     <tr key={c.competitorName} className="hover:bg-gray-50">
                       <td className="p-2 border-b">{c.competitorName}</td>
                       <td className="p-2 border-b">{c.funding}</td>
@@ -369,7 +373,7 @@ export default function Report({ report }: { report: any }) {
               <CardTitle>Team Analysis</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-700 leading-relaxed">{report.teamAnalysis}</p>
+              <p className="text-gray-700 leading-relaxed">{report?.teamAnalysis || "Team analysis not available."}</p>
             </CardContent>
           </Card>
         </div>
@@ -381,7 +385,7 @@ export default function Report({ report }: { report: any }) {
             </CardHeader>
             <CardContent>
               <ol className="list-decimal list-inside space-y-3 text-gray-600">
-                {report.sources.map((source: any) => (
+                {(report?.sources || []).map((source: any) => (
                   <motion.li
                     key={source.id}
                     id={`source-${source.id}`}

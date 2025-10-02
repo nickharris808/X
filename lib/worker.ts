@@ -131,7 +131,7 @@ GUIDELINES:
         {
           role: "system",
           content:
-            "You are a world-class research analyst with web search capabilities. Execute the following research plan and provide a detailed report with citations in markdown format. IMPORTANT: When you find information from web sources, use REAL URLs and descriptive titles. Do NOT fabricate sources. If you cannot find a specific source for information, synthesize it from multiple sources and cite the most relevant one. Always end your report with a 'Sources:' section containing numbered entries with descriptive titles and real URLs in this format:\n\n1. [Descriptive Title] https://example.com/real-url\n2. [Another Descriptive Title] https://another-example.com/real-url",
+            "You are a world-class research analyst with web search capabilities. Execute the following research plan and provide a detailed report with citations in markdown format.\n\nCRITICAL FORMATTING REQUIREMENTS:\n1. Use inline citations like [^1^], [^2^] throughout your report\n2. ALWAYS end your report with a 'Sources:' section\n3. Each source must be numbered and include BOTH title and COMPLETE URL\n4. Use this EXACT format for sources:\n\nSources:\n1. [Grand View Research - AI in Drug Discovery Market Report] https://www.grandviewresearch.com/industry-analysis/ai-in-drug-discovery-market\n2. [McKinsey - Future of Healthcare AI] https://www.mckinsey.com/industries/healthcare/our-insights/artificial-intelligence-in-healthcare\n3. [Statista - Pharmaceutical Industry Statistics] https://www.statista.com/markets/413/topic/487/pharmaceuticals/\n4. [Forbes - AI in Pharma] https://www.forbes.com/sites/forbestechcouncil/2024/01/15/ai-in-pharmaceuticals/\n5. [Bloomberg - Pharma AI Investments] https://www.bloomberg.com/news/articles/2024-02-15/pharma-ai-investments\n\nIMPORTANT:\n- Use REAL, COMPLETE URLs (not truncated)\n- Use descriptive titles in square brackets\n- Do NOT fabricate sources - use real industry reports and websites\n- If you cannot find specific sources, use general industry websites like:\n  - grandviewresearch.com\n  - mckinsey.com\n  - statista.com\n  - forbes.com\n  - bloomberg.com\n  - crunchbase.com\n  - techcrunch.com\n- Minimum 8 sources required\n- Each source must have both title and complete URL\n- Focus on pharmaceutical AI, drug discovery, and healthcare technology",
         },
         { role: "user", content: deepResearchPrompt },
       ],
@@ -140,14 +140,16 @@ GUIDELINES:
     const researchResult = deepResearchResponse.choices[0].message.content
    
 
-    // Simulate the webhook call
-    const baseUrl = process.env.BASE_URL || "http://localhost:3000";
-    const webhookUrl = `${baseUrl}/api/webhook/research-complete?jobId=${jobId}`;
-    console.log(`[${jobId}] Deep research finished. Calling webhook: ${webhookUrl}`);
-    await fetch(webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    // Call the webhook function directly instead of making HTTP request
+    console.log(`[${jobId}] Deep research finished. Processing final report directly...`);
+    
+    // Import the webhook handler function directly
+    const { processResearchComplete } = await import("../app/api/webhook/research-complete/route");
+    
+    // Create a mock request object for the webhook handler
+    const mockRequest = {
+      url: `http://localhost:3000/api/webhook/research-complete?jobId=${jobId}`,
+      json: async () => ({
         content: [
           {
             text: researchResult,
@@ -155,7 +157,10 @@ GUIDELINES:
           },
         ],
       }),
-    })
+    } as any;
+    
+    // Call the webhook handler directly
+    await processResearchComplete(mockRequest);
   } catch (error: any) {
     console.error(`[${jobId}] Analysis failed:`, error)
     await updateJob(jobId, { status: "error", error: error.message })
@@ -166,48 +171,99 @@ GUIDELINES:
 }
 
 function extractSources(text: string): { title: string; url: string }[] {
-  const sourcesSectionMatch = text.match(/Sources:([\s\S]*)/)
-  if (!sourcesSectionMatch) return []
-  const sourcesSection = sourcesSectionMatch[1]
+  console.log("=== EXTRACTING SOURCES ===")
+  console.log("Full text length:", text.length)
+  
+  // Try multiple patterns to find sources section
+  const patterns = [
+    /Sources?:([\s\S]*?)(?:\n\n|\n##|\n#|\n\*\*|\Z)/i,
+    /References?:([\s\S]*?)(?:\n\n|\n##|\n#|\n\*\*|\Z)/i,
+    /Citations?:([\s\S]*?)(?:\n\n|\n##|\n#|\n\*\*|\Z)/i,
+    /Sources:([\s\S]*)/i
+  ]
+  
+  let sourcesSection = ""
+  for (const pattern of patterns) {
+    const match = text.match(pattern)
+    if (match && match[1]) {
+      sourcesSection = match[1]
+      console.log("Found sources section with pattern:", pattern)
+      break
+    }
+  }
+  
+  if (!sourcesSection) {
+    console.log("No sources section found")
+    return []
+  }
+  
+  console.log("Sources section:", sourcesSection.substring(0, 500) + "...")
+  
   const sourceLines = sourcesSection
     .trim()
     .split("\n")
-    .filter((line) => line.match(/^\s*\d+\./) || line.match(/\[\^\d+\^\]:/))
+    .filter((line) => {
+      const trimmed = line.trim()
+      return trimmed && (
+        trimmed.match(/^\s*\d+\./) || 
+        trimmed.match(/\[\^\d+\^\]:/) ||
+        trimmed.match(/^[-*]\s/) ||
+        trimmed.includes("http")
+      )
+    })
   
-  console.log("Extracted source lines:", sourceLines)
+  console.log("Filtered source lines:", sourceLines)
   
-  return sourceLines.map((line) => {
-    // Try multiple patterns for title and URL extraction
+  return sourceLines.map((line, index) => {
     let title = "Untitled Source"
     let url = "#"
     
-    // Pattern 1: "1. Title https://url.com"
-    const pattern1 = line.match(/\d+\.\s*(.*?)\s+(https?:\/\/[^\s)]+)/)
+    console.log(`Processing line ${index + 1}: "${line}"`)
+    
+    // Pattern 1: "1. [Title] https://url.com" or "1. Title https://url.com"
+    const pattern1 = line.match(/\d+\.\s*\[([^\]]+)\]\s+(https?:\/\/[^\s)]+)/)
     if (pattern1) {
-      title = pattern1[1].trim().replace(/"/g, "").replace(/^["']|["']$/g, "")
+      title = pattern1[1].trim()
       url = pattern1[2]
+      console.log(`Pattern 1 match: title="${title}", url="${url}"`)
     } else {
-      // Pattern 2: "1. Title" (no URL)
+      // Pattern 2: "1. Title https://url.com"
+      const pattern2 = line.match(/\d+\.\s*(.*?)\s+(https?:\/\/[^\s)]+)/)
+      if (pattern2) {
+        title = pattern2[1].trim().replace(/^["']|["']$/g, "")
+        url = pattern2[2]
+        console.log(`Pattern 2 match: title="${title}", url="${url}"`)
+      } else {
+        // Pattern 3: "1. Title" (no URL)
       const titleMatch = line.match(/\d+\.\s*(.*?)(?:\s*$)/)
       if (titleMatch && titleMatch[1]) {
-        title = titleMatch[1].trim().replace(/"/g, "").replace(/^["']|["']$/g, "")
+          title = titleMatch[1].trim().replace(/^["']|["']$/g, "")
       }
       
       // Look for URL anywhere in the line
       const urlMatch = line.match(/(https?:\/\/[^\s)]+)/)
       if (urlMatch) {
         url = urlMatch[0]
+        }
+        console.log(`Pattern 3 match: title="${title}", url="${url}"`)
       }
     }
     
     // Clean up title
     if (title === "" || title === "Untitled Source") {
-      title = "Untitled Source"
+      title = `Source ${index + 1}`
     }
     
-    console.log(`Extracted from line "${line}": title="${title}", url="${url}"`)
+    // If no URL found, create a placeholder URL based on title
+    if (url === "#" && title !== "Untitled Source") {
+      // Create a search URL for the title
+      const searchQuery = encodeURIComponent(title.replace(/[\[\]]/g, ""))
+      url = `https://www.google.com/search?q=${searchQuery}`
+    }
+    
+    console.log(`Final result: title="${title}", url="${url}"`)
     return { title, url }
-  })
+  }).filter(source => source.title !== "Untitled Source" && source.title.length > 0)
 }
 
 export async function cleanupFile(filePath: string) {

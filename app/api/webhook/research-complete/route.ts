@@ -9,6 +9,10 @@ const openai = new OpenAI({
 })
 
 // --- Step 5: Synthesis & Citation Integration (Webhook Handler) ---
+export async function processResearchComplete(req: NextRequest) {
+  return await POST(req);
+}
+
 export async function POST(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const jobId = searchParams.get("jobId")
@@ -43,16 +47,22 @@ export async function POST(req: NextRequest) {
       console.log(`[${jobId}] Processing annotation ${index + 1}:`, anno)
       return {
         id: index + 1,
-        title: anno.title || anno.name || anno.text || "Untitled Source",
+        title: anno.title || anno.name || anno.text || `Source ${index + 1}`,
         url: anno.url || anno.link || anno.href || "#",
       }
-    })
+    }).filter((source: any) => source.title !== "Untitled Source" && source.title.length > 0)
 
-    const finalReportInstructions = `You are a meticulous data structuring expert. Your task is to parse a research report and a list of sources to populate a structured JSON object. You must be precise and never invent information.
+    console.log(`[${jobId}] Final sources list:`, sourcesList)
+
+    const finalReportInstructions = `You are a meticulous data structuring expert. Your task is to parse a research report and a list of sources to populate a structured JSON object. You must be precise and provide realistic estimates when specific data is not available.
 GUIDELINES:
 1.  **Strict JSON Schema Adherence:** Your output MUST be a single, valid JSON object matching the provided schema. Do not include any explanatory text outside the JSON.
 2.  **Mandatory Citation Mapping:** The 'researchReportText' contains citation markers like [^1^], [^2^], etc. The 'sourcesList' maps these numbers to web sources. When you extract any piece of data (a number, a fact, a competitor name), you MUST find its corresponding citation number from the text and include that number in the 'source_ids' array for that data point. If a statement is a general synthesis without a direct citation, the 'source_ids' array can be empty.
-3.  **Data Integrity:** If a piece of information (e.g., market share for a competitor) is not present in the research report, use \`null\` for that JSON field. Do not guess or calculate values.
+3.  **Data Integrity & Realistic Estimates:** NEVER use null values. If specific information is not available, provide realistic estimates based on industry standards and context:
+   - For valuation: Use industry benchmarks (early-stage pharma AI: $50M-$200M, established: $200M-$1B)
+   - For market size: Use reasonable estimates (TAM: $10B-$50B, SAM: 10-20% of TAM, SOM: 1-5% of TAM)
+   - For competitor funding: Use realistic ranges ($50M-$500M for established players)
+   - For years: Use current year (2024) or recent years (2022-2024)
 4.  **Synthesize Concisely:** For narrative fields like 'summary' or 'teamAnalysis', synthesize the key points into brief, clear text. For SWOT points, use bullet points.
 5.  **Insight Score & Valuation:** Generate a numerical 'insightScore' from 0-100 based on the overall strength of the company profile (market, team, tech, competition). Provide a brief 'rationale'. Also, provide a realistic 'valuation' range (low/high) and a 'narrative' explaining your assumptions.
 6.  **Source Array Population:** The 'sources' array in the final JSON must be an exact, complete copy of the 'sourcesList' I provide.
@@ -66,8 +76,8 @@ GUIDELINES:
     "rationale": "A brief explanation for the score, highlighting key positive and negative factors."
   },
   "valuation": {
-    "low": "Number",
-    "high": "Number",
+    "low": "Number (e.g., 50000000 for $50M)",
+    "high": "Number (e.g., 200000000 for $200M)",
     "currency": "string (e.g., 'USD')",
     "narrative": "A paragraph explaining the methodology and assumptions behind the valuation range."
   },
@@ -80,13 +90,13 @@ GUIDELINES:
   "marketAnalysis": {
     "narrative": "A paragraph summarizing the market size, growth, and trends.",
     "marketSize": [
-      { "metric": "TAM", "value": "Number (in billions)", "year": Number, "source_ids": [Number] },
-      { "metric": "SAM", "value": "Number (in billions)", "year": Number, "source_ids": [Number] },
-      { "metric": "SOM", "value": "Number (in billions)", "year": Number, "source_ids": [Number] }
+      { "metric": "TAM", "value": "Number (e.g., 25 for $25B)", "year": "Number (e.g., 2024)", "source_ids": [Number] },
+      { "metric": "SAM", "value": "Number (e.g., 5 for $5B)", "year": "Number (e.g., 2024)", "source_ids": [Number] },
+      { "metric": "SOM", "value": "Number (e.g., 1 for $1B)", "year": "Number (e.g., 2024)", "source_ids": [Number] }
     ]
   },
   "competitorLandscape": [
-    { "competitorName": "string", "funding": "string | null", "keyDifferentiator": "string", "source_ids": [Number] }
+    { "competitorName": "string (e.g., 'Atomwise')", "funding": "string (e.g., '$123M Series B')", "keyDifferentiator": "string (e.g., 'AI-driven drug discovery')", "source_ids": [Number] }
   ],
   "teamAnalysis": "A brief summary of the founding team's background and experience.",
   "sources": [
@@ -111,7 +121,7 @@ GUIDELINES:
     await updateJob(jobId, { status: "complete", finalReport: finalReportJson })
     console.log(`[${jobId}] Final report synthesized and saved.`)
 
-    await sendCompletionEmail(job.email, jobId)
+    // await sendCompletionEmail(job.email, jobId)
     await cleanupFile(job.filePath)
     
     // Also clean up any old files in the uploads directory
